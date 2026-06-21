@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/auth';
@@ -19,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useIsTablet } from '@/hooks/useIsTablet';
 import { appStorage } from '@/lib/storage';
 import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
   const { user, signOut } = useAuth();
@@ -26,6 +28,8 @@ export default function DashboardScreen() {
   const isTablet = useIsTablet();
   const { colors, companionPet, setCompanionPet } = useTheme();
   const { showAlert } = useAlert();
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   // State
   const [profileName, setProfileName] = useState('');
@@ -34,6 +38,7 @@ export default function DashboardScreen() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [savingPending, setSavingPending] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   
   // Stats state
   const [stats, setStats] = useState({
@@ -219,7 +224,15 @@ export default function DashboardScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header Bar */}
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.backgroundCard }]}>
+      <View style={[
+        styles.header,
+        {
+          paddingTop: insets.top > 0 ? insets.top + 8 : 16,
+          height: insets.top > 0 ? 60 + insets.top : 85,
+          borderBottomColor: colors.border,
+          backgroundColor: colors.backgroundCard,
+        }
+      ]}>
         <View>
           <Text style={[styles.welcomeText, { color: colors.text }]}>¡Hola, {profileName || 'Estudiante'}! 🌸</Text>
           <Text style={[styles.dateText, { color: colors.textSecondary }]}>
@@ -229,42 +242,58 @@ export default function DashboardScreen() {
 
         {/* Toolbar: Settings, Profile and Logout */}
         <View style={styles.headerToolbar}>
-          {/* Companion Pet Selector Button */}
-          <TouchableOpacity
-            style={[styles.headerIconBtn, { backgroundColor: colors.backgroundElement, marginRight: 8 }]}
-            onPress={() => setIsPetModalOpen(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 18 }}>🐾</Text>
-          </TouchableOpacity>
+          {screenWidth < 450 ? (
+            /* Hamburger Menu Button */
+            <TouchableOpacity
+              style={[styles.headerIconBtn, { backgroundColor: colors.backgroundElement }]}
+              onPress={() => setIsHeaderMenuOpen(true)}
+              activeOpacity={0.7}
+            >
+              <Svg width={24} height={24} viewBox="0 0 24 24">
+                <Path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill={colors.primary} />
+              </Svg>
+            </TouchableOpacity>
+          ) : (
+            /* Traditional Horizontal Buttons */
+            <>
+              {/* Companion Pet Selector Button */}
+              <TouchableOpacity
+                style={[styles.headerIconBtn, { backgroundColor: colors.backgroundElement, marginRight: 8 }]}
+                onPress={() => setIsPetModalOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 18 }}>🐾</Text>
+              </TouchableOpacity>
 
-          {/* Settings button */}
-          <TouchableOpacity
-            style={[styles.headerIconBtn, { backgroundColor: colors.backgroundElement }]}
-            onPress={() => router.push('/settings')}
-            activeOpacity={0.7}
-          >
-            <Svg width={20} height={20} viewBox="0 0 24 24">
-              <Path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill={colors.primary} />
-            </Svg>
-          </TouchableOpacity>
+              {/* Settings button */}
+              <TouchableOpacity
+                style={[styles.headerIconBtn, { backgroundColor: colors.backgroundElement, marginRight: 8 }]}
+                onPress={() => router.push('/settings')}
+                activeOpacity={0.7}
+              >
+                <Svg width={20} height={20} viewBox="0 0 24 24">
+                  <Path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill={colors.primary} />
+                </Svg>
+              </TouchableOpacity>
 
-          {/* Profile photo avatar button */}
-          <TouchableOpacity
-            style={styles.headerAvatarBtn}
-            onPress={() => router.push('/profile')}
-            activeOpacity={0.8}
-          >
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.headerAvatar} />
-            ) : (
-              <View style={[styles.headerAvatarPlaceholder, { backgroundColor: colors.backgroundElement }]}>
-                <Text style={[styles.headerAvatarInitial, { color: colors.primary }]}>
-                  {profileName ? profileName.charAt(0).toUpperCase() : 'U'}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+              {/* Profile photo avatar button */}
+              <TouchableOpacity
+                style={styles.headerAvatarBtn}
+                onPress={() => router.push('/profile')}
+                activeOpacity={0.8}
+              >
+                {photoUri ? (
+                  <Image source={{ uri: photoUri }} style={styles.headerAvatar} />
+                ) : (
+                  <View style={[styles.headerAvatarPlaceholder, { backgroundColor: colors.backgroundElement }]}>
+                    <Text style={[styles.headerAvatarInitial, { color: colors.primary }]}>
+                      {profileName ? profileName.charAt(0).toUpperCase() : 'U'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
@@ -322,6 +351,59 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
+      {/* Hamburger Dropdown Modal */}
+      <Modal
+        visible={isHeaderMenuOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsHeaderMenuOpen(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuModalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsHeaderMenuOpen(false)}
+        >
+          <View style={[
+            styles.menuModalContent, 
+            { 
+              backgroundColor: colors.backgroundCard, 
+              borderColor: colors.border, 
+              top: insets.top > 0 ? insets.top + 70 : 80 
+            }
+          ]}>
+            <TouchableOpacity 
+              style={[styles.menuItem, { borderBottomColor: colors.border }]} 
+              onPress={() => { setIsHeaderMenuOpen(false); setIsPetModalOpen(true); }}
+            >
+              <Text style={styles.menuItemEmoji}>🐾</Text>
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Elegir Mascota</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.menuItem, { borderBottomColor: colors.border }]} 
+              onPress={() => { setIsHeaderMenuOpen(false); router.push('/settings'); }}
+            >
+              <Text style={styles.menuItemEmoji}>⚙️</Text>
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Configuraciones</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => { setIsHeaderMenuOpen(false); router.push('/profile'); }}
+            >
+              {photoUri ? (
+                <Image source={{ uri: photoUri }} style={styles.menuItemAvatar} />
+              ) : (
+                <View style={[styles.menuItemAvatarPlaceholder, { backgroundColor: colors.backgroundElement }]}>
+                  <Text style={[styles.menuItemAvatarInitial, { color: colors.primary }]}>
+                    {profileName ? profileName.charAt(0).toUpperCase() : 'U'}
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.menuItemText, { color: colors.text, marginLeft: 8 }]}>Mi Perfil</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Styled Modal for Quick Pending */}
       <Modal
         animationType="slide"
@@ -329,9 +411,31 @@ export default function DashboardScreen() {
         visible={isModalOpen}
         onRequestClose={() => setIsModalOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Nuevo Pendiente Rápido ⚡</Text>
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => {
+            setIsModalOpen(false);
+            setQuickPendingDesc('');
+          }}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={() => {}} // prevent click-through
+            style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}
+          >
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitle, { color: colors.text, marginBottom: 0 }]}>Nuevo Pendiente ⚡</Text>
+              <TouchableOpacity 
+                style={[styles.modalCloseBtn, { backgroundColor: colors.backgroundElement }]} 
+                onPress={() => {
+                  setIsModalOpen(false);
+                  setQuickPendingDesc('');
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textSecondary }}>✕</Text>
+              </TouchableOpacity>
+            </View>
             
             <TextInput
               style={[
@@ -375,8 +479,8 @@ export default function DashboardScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Companion Pet Selector Modal */}
@@ -386,9 +490,25 @@ export default function DashboardScreen() {
         visible={isPetModalOpen}
         onRequestClose={() => setIsPetModalOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border, maxWidth: 500 }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Elegir Mascota de Compañía 🐾</Text>
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsPetModalOpen(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={() => {}} // prevent click-through
+            style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border, maxWidth: 500 }]}
+          >
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitle, { color: colors.text, marginBottom: 0 }]}>Elegir Mascota 🐾</Text>
+              <TouchableOpacity 
+                style={[styles.modalCloseBtn, { backgroundColor: colors.backgroundElement }]} 
+                onPress={() => setIsPetModalOpen(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textSecondary }}>✕</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
               Selecciona un tierno personaje animado que camine por tu pantalla mientras organizas tus estudios.
             </Text>
@@ -407,8 +527,8 @@ export default function DashboardScreen() {
             >
               <Text style={styles.modalBtnTextPrimary}>Cerrar</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -705,5 +825,73 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  menuModalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  menuModalContent: {
+    position: 'absolute',
+    right: 24,
+    width: 200,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  menuItemEmoji: {
+    fontSize: 18,
+    width: 28,
+    textAlign: 'center',
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 10,
+  },
+  menuItemAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FF4B87',
+  },
+  menuItemAvatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFD3DF',
+  },
+  menuItemAvatarInitial: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

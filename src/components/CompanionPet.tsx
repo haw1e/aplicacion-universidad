@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, PanResponder } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions, PanResponder } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '@/context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MESSAGES: Record<string, string[]> = {
   poro: [
@@ -39,15 +40,20 @@ const PETS: Record<string, { type: 'emoji' | 'image'; value: any }> = {
 
 export default function CompanionPet() {
   const { companionPet, colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // If pet setting is disabled or invalid, render nothing
   if (companionPet === 'none' || !PETS[companionPet]) {
     return null;
   }
 
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
-  
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const dimensionsRef = React.useRef({ width: screenWidth, height: screenHeight });
+
+  React.useEffect(() => {
+    dimensionsRef.current = { width: screenWidth, height: screenHeight };
+  }, [screenWidth, screenHeight]);
+
   // Shared Animation Values
   const xPos = useSharedValue(screenWidth - 80);
   const yPos = useSharedValue(0); // Vertical drag displacement
@@ -196,10 +202,12 @@ export default function CompanionPet() {
       onPanResponderMove: (_, gestureState) => {
         const nextX = startX.current + gestureState.dx;
         const nextY = startY.current + gestureState.dy;
+        const currentWidth = dimensionsRef.current.width;
+        const currentHeight = dimensionsRef.current.height;
 
         // Boundary constraints to keep the pet visible on the screen
-        xPos.value = Math.max(10, Math.min(screenWidth - 60, nextX));
-        yPos.value = Math.max(-screenHeight + 160, Math.min(50, nextY));
+        xPos.value = Math.max(10, Math.min(currentWidth - 60, nextX));
+        yPos.value = Math.max(-currentHeight + 160, Math.min(50, nextY));
       },
       onPanResponderRelease: (_, gestureState) => {
         // Resume bobbing animation
@@ -267,21 +275,26 @@ export default function CompanionPet() {
     <View style={styles.overlayContainer} pointerEvents="box-none">
       
       {/* Speech Bubble */}
-      <Animated.View style={[styles.bubbleCard, animatedBubbleStyle, { backgroundColor: colors.backgroundCard, borderColor: colors.primary }]}>
+      <Animated.View style={[
+        styles.bubbleCard, 
+        { bottom: 120 + insets.bottom },
+        animatedBubbleStyle, 
+        { backgroundColor: colors.backgroundCard, borderColor: colors.primary }
+      ]}>
         <Text style={[styles.bubbleText, { color: colors.text }]}>{bubbleText}</Text>
         <View style={[styles.bubbleArrow, { borderTopColor: colors.primary }]} />
       </Animated.View>
 
       {/* Burst Effect 1 */}
-      <Animated.Text style={[styles.effectText, animatedEffect1]}>💖</Animated.Text>
+      <Animated.Text style={[styles.effectText, { bottom: 85 + insets.bottom }, animatedEffect1]}>💖</Animated.Text>
 
       {/* Burst Effect 2 */}
-      <Animated.Text style={[styles.effectText, animatedEffect2]}>✨</Animated.Text>
+      <Animated.Text style={[styles.effectText, { bottom: 85 + insets.bottom }, animatedEffect2]}>✨</Animated.Text>
 
       {/* The Animated Pet (Draggable Wrapper) */}
       <Animated.View 
         {...panResponder.panHandlers}
-        style={[styles.petWrapper, animatedPetStyle]}
+        style={[styles.petWrapper, { bottom: 65 + insets.bottom }, animatedPetStyle]}
       >
         <View style={styles.petTouch}>
           <Animated.Image

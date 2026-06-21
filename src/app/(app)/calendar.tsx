@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useAuth } from '@/context/auth';
 import { useTheme } from '@/context/ThemeContext';
@@ -36,6 +37,10 @@ export default function CalendarScreen() {
   const isTablet = useIsTablet();
   const { colors } = useTheme();
   const { showAlert } = useAlert();
+  const { width: screenWidth } = useWindowDimensions();
+  
+  // Calculate responsive cell width (max 850px width container, minus calendar card paddings, divided by 7 days)
+  const cellWidth = Math.floor((Math.min(screenWidth, 850) - 32) / 7);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -334,7 +339,7 @@ export default function CalendarScreen() {
                   // @ts-ignore
                   'stylesheet.day.basic': {
                     base: {
-                      width: isTablet ? 78 : 45,
+                      width: cellWidth,
                       height: isTablet ? 90 : 75,
                       alignItems: 'stretch',
                       justifyContent: 'flex-start',
