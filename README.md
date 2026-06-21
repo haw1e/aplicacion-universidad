@@ -1,56 +1,82 @@
-# Welcome to your Expo app 👋
+# 🌸 Aplicación de Apuntes Académicos
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Una aplicación universal para dispositivos móviles y web desarrollada con **React Native** y **Expo** diseñada específicamente para ayudar a estudiantes universitarios a organizar su vida académica. Cuenta con un diseño estético pastel en tonos rosa, soporte para temas (claro y oscuro), y simpáticas mascotas animadas interactivas que te acompañarán durante tus horas de estudio.
 
-## Get started
+---
 
-1. Install dependencies
+## ✨ Características Principales
 
-   ```bash
-   npm install
-   ```
+### 🐾 1. Mascotas de Compañía Interactivas (Companion Pets)
+* **Compañeros Animados:** Elige entre un esponjoso **Poro ☁️** (de League of Legends) o el tierno **Kirby 🌸** para que caminen y floten en tu pantalla.
+* **Comportamiento Autónomo:** Las mascotas caminan aleatoriamente, respiran/flotan de forma constante y expresan burbujas de diálogo con mensajes motivacionales y divertidos sobre el estudio.
+* **Mecánica de Arrastre (Draggable):** Puedes arrastrar y soltar a tu mascota en cualquier parte de la pantalla si interrumpe la visualización de algún botón o texto. La burbuja de diálogo y los efectos visuales la seguirán perfectamente.
+* **Interacciones al Tocar:** Haz clic o toca a tu mascota para que realice un salto de alegría y emita ráfagas de estrellas ✨ y corazones 💖.
 
-2. Start the app
+### 📅 2. Calendario Académico Expandido
+* **Visualización Completa:** Un calendario mensual interactivo donde se marcan con pequeños badges informativos los exámenes (🎓), evaluaciones (🌟), tareas (📝) y pendientes rápidos (⚡).
+* **Organización en Columna:** Un diseño limpio que sitúa la lista de actividades del día seleccionado **directamente debajo del calendario**, adaptándose elegantemente tanto a teléfonos como a tablets (sin divisiones laterales incómodas).
+* **Detalles al Instante:** Toca cualquier día para desplegar y revisar al instante todas tus responsabilidades programadas.
 
-   ```bash
-   npx expo start
-   ```
+### 📝 3. Gestor de Tareas y Pendientes Rápidos
+* **Doble Panel Deslizable:** Alterna fácilmente entre tus Tareas formales (con fecha límite) y Pendientes Rápidos redactados al instante.
+* **Switch Animado Ultra-Limpio:** Transición fluida impulsada por curvas Bezier cúbicas de alta velocidad que elimina por completo cualquier rebote ("jiggle").
+* **Creación y Conversión:** Guarda un pendiente velozmente y conviértelo más tarde en una tarea académica formal asignándole una fecha límite con un solo clic.
 
-In the output, you'll find options to open the app in a
+### 📊 4. Evaluaciones y Exámenes
+* **Clasificación Clara:** Secciones separadas y organizadas cronológicamente para ingresar calificaciones, controles, entregas de proyectos y exámenes finales.
+* **Base de Datos Segura:** Todos los registros académicos se sincronizan en tiempo real mediante la integración de base de datos relacional.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### 👤 5. Perfil de Estudiante y Ajustes
+* **Personalización:** Modifica tu nombre completo y sube una foto de perfil personalizada desde la galería de tu dispositivo o cámara.
+* **Almacenamiento Local Híbrido:** Integración inteligente que respalda tus preferencias de sesión e imagen de perfil localmente de forma segura en Web y dispositivos móviles nativos.
+* **Seguridad:** Panel de cambio de contraseña encriptado conectado directamente con el motor de autenticación.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 💬 6. Sistema de Alertas y Confirmaciones Personalizadas
+* **Coherencia Visual:** Se han reemplazado los cuadros de alerta genéricos del navegador y del sistema (`Alert.alert` y `window.confirm`) por **diálogos modales personalizados dentro de la propia aplicación**.
+* **Integración de Colores:** Los diálogos de alerta e información adoptan los colores exactos del tema claro y oscuro, mostrando botones de peligro en rojo pastel para acciones destructivas (como eliminar eventos).
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## 🛠️ Stack Tecnológico
 
+* **Core & Routing:** [React Native](https://reactnative.dev/) & [Expo (v56)](https://expo.dev/) con File-Based Routing mediante [Expo Router](https://docs.expo.dev/router/introduction/).
+* **Animaciones:** [React Native Reanimated](https://docs.expo.dev/versions/latest/sdk/reanimated/) para el renderizado suave de traslaciones, botes y gestos interactivos.
+* **Componentes de Calendario:** [React Native Calendars](https://github.com/wix/react-native-calendars).
+* **Backend como Servicio (BaaS):** [Supabase](https://supabase.com/) (Autenticación de usuarios, base de datos relacional PostgreSQL y almacenamiento persistente).
+* **Tipado:** [TypeScript](https://www.typescriptlang.org/) para garantizar la robustez y seguridad del código.
+
+---
+
+## 🚀 Instalación y Configuración Local
+
+Sigue estos pasos para instalar y ejecutar el proyecto en tu máquina local:
+
+### 1. Clonar el repositorio e instalar dependencias
 ```bash
-npm run reset-project
+# Instalar dependencias
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configurar las variables de entorno
+Crea un archivo `.env` en la raíz del proyecto (este archivo está configurado en `.gitignore` para que nunca se suba al repositorio de GitHub):
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto-supabase.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=tu-clave-anon-de-supabase
+```
 
-### Other setup steps
+### 3. Iniciar el servidor de desarrollo de Expo
+```bash
+# Iniciar Metro Bundler
+npm run start
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Desde la consola puedes pulsar:
+* `a` para abrir en un emulador de **Android**.
+* `i` para abrir en el simulador de **iOS**.
+* `w` para abrir en el navegador **Web**.
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🔒 Seguridad y Buenas Prácticas
+* **Ignorado de Credenciales:** El archivo `.gitignore` está configurado para omitir completamente archivos de desarrollo como `.env`, `.env.local` y carpetas de compilación nativa (`/ios`, `/android`, `.expo/`).
+* **Conexión API Segura:** Toda la comunicación con base de datos y autenticación se realiza mediante tokens JWT auto-renovados provistos de forma transparente por Supabase.
