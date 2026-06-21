@@ -6,14 +6,20 @@ import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import CompanionPet from '@/components/CompanionPet';
+import AppUpdater from '@/components/AppUpdater';
 
 import { AlertProvider } from '@/context/AlertContext';
+import { requestNotificationPermissions } from '@/lib/notifications';
 
 function InitialLayout() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const { colors, isDark } = useTheme();
+
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -43,6 +49,7 @@ function InitialLayout() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Slot />
       <CompanionPet />
+      <AppUpdater />
     </View>
   );
 }

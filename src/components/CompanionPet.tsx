@@ -31,21 +31,57 @@ const MESSAGES: Record<string, string[]> = {
     '¡Eres súper especial! 💖',
     '¡A estudiar con alegría! 📚',
   ],
+  junimo: [
+    '¡Gibu! 🌿',
+    'Los espíritus del bosque te cuidan. 🌲',
+    '¿Trajiste fruta para mí? 🍇',
+    'Me gusta ayudar en el centro cívico. 🏡',
+    '¡Qué bonito día para cosechar apuntes! 🌱',
+  ],
+  kyubey: [
+    '¿Quieres hacer un contrato conmigo? 🌟',
+    '¡Conviértete en una chica mágica! 🪄',
+    'No entiendo las emociones humanas. 👁️',
+    'Tu potencial es ilimitado. ✨',
+    'Estudiar aumentará tu nivel de energía. ⚡',
+  ],
+  morpekob: [
+    '¡Tengo espacio para más comida! 🐹',
+    '¡Qué rico está este snack! 🍪',
+    '¡Siento mucha energía positiva! ⚡',
+    '¡A estudiar con una sonrisa! 😊',
+  ],
+  morpekom: [
+    '¡TENGO HAMBRE! 💢',
+    '¡No me molestes si no hay comida! 😡',
+    '¡Rueda Aural oscuro! ⚡',
+    '¡Gruuuur...! 🍖',
+  ],
+  napstablook: [
+    'oh... de verdad no quería molestarte... 👻',
+    'suelo venir aquí a tumbarme en el suelo y sentirme como basura... 🎶',
+    'hago música en mi computadora... si quieres escuchar...',
+    'oh, perdón... ¿estoy estorbando? 💧',
+    'creo que me iré flotando despacio... 🌫️',
+  ],
 };
 
 const PETS: Record<string, { type: 'emoji' | 'image'; value: any }> = {
   poro: { type: 'image', value: require('../../assets/images/poro.jpg') },
-  kirby: { type: 'image', value: require('../../assets/images/kirby.jpg') },
+  kirby: { type: 'image', value: require('../../assets/images/kirby.png') },
+  junimo: { type: 'image', value: require('../../assets/images/junimo.png') },
+  kyubey: { type: 'image', value: require('../../assets/images/kyubey.webp') },
+  morpekob: { type: 'image', value: require('../../assets/images/Morpekob.webp') },
+  morpekom: { type: 'image', value: require('../../assets/images/morpekom.png') },
+  napstablook: { type: 'image', value: require('../../assets/images/Napstablook.webp') },
 };
 
 export default function CompanionPet() {
   const { companionPet, colors } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // If pet setting is disabled or invalid, render nothing
-  if (companionPet === 'none' || !PETS[companionPet]) {
-    return null;
-  }
+  const companionPetRef = useRef(companionPet);
+  companionPetRef.current = companionPet;
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const dimensionsRef = React.useRef({ width: screenWidth, height: screenHeight });
@@ -79,8 +115,11 @@ export default function CompanionPet() {
 
   // Start breathing / floating animation
   const bobY = useSharedValue(0);
-
   useEffect(() => {
+    if (companionPet === 'none' || !PETS[companionPet]) {
+      return;
+    }
+
     // Subtle bobbing up and down to look "alive"
     bobY.value = withRepeat(
       withSequence(
@@ -149,7 +188,7 @@ export default function CompanionPet() {
 
   // Trigger speech bubble
   const triggerBubble = () => {
-    const list = MESSAGES[companionPet] || ['¡Poyo! 🌸'];
+    const list = MESSAGES[companionPetRef.current] || ['¡Poyo! 🌸'];
     const randomMsg = list[Math.floor(Math.random() * list.length)];
     setBubbleText(randomMsg);
 
@@ -270,6 +309,9 @@ export default function CompanionPet() {
       ],
     };
   });
+  if (companionPet === 'none' || !PETS[companionPet]) {
+    return null;
+  }
 
   return (
     <View style={styles.overlayContainer} pointerEvents="box-none">

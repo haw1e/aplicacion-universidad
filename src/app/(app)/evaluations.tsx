@@ -20,6 +20,7 @@ import { useIsTablet } from '@/hooks/useIsTablet';
 import PinkFAB from '@/components/PinkFAB';
 import { Calendar } from 'react-native-calendars';
 import Svg, { Path } from 'react-native-svg';
+import { scheduleItemNotifications, cancelItemNotifications } from '@/lib/notifications';
 
 interface Evaluation {
   id: string;
@@ -28,9 +29,14 @@ interface Evaluation {
   user_id: string;
 }
 
+interface DayGroupEvaluation {
+  date: string;
+  evaluations: Evaluation[];
+}
+
 interface GroupedSection {
   title: string;
-  data: Evaluation[];
+  data: DayGroupEvaluation[];
 }
 
 export default function EvaluationsScreen() {
@@ -75,19 +81,40 @@ export default function EvaluationsScreen() {
     // Sort raw elements chronologically first
     const sorted = [...rawEvals].sort((a, b) => a.date.localeCompare(b.date));
 
-    const groups: { [key: string]: Evaluation[] } = {};
+    const monthGroups: { [key: string]: Evaluation[] } = {};
     sorted.forEach(item => {
       const monthTitle = getMonthName(item.date);
-      if (!groups[monthTitle]) {
-        groups[monthTitle] = [];
+      if (!monthGroups[monthTitle]) {
+        monthGroups[monthTitle] = [];
       }
-      groups[monthTitle].push(item);
+      monthGroups[monthTitle].push(item);
     });
 
-    return Object.keys(groups).map(title => ({
-      title,
-      data: groups[title],
-    }));
+    return Object.keys(monthGroups).map(monthTitle => {
+      const evalsInMonth = monthGroups[monthTitle];
+      
+      // Group evals in this month by date
+      const dayGroupsMap: { [key: string]: Evaluation[] } = {};
+      evalsInMonth.forEach(item => {
+        if (!dayGroupsMap[item.date]) {
+          dayGroupsMap[item.date] = [];
+        }
+        dayGroupsMap[item.date].push(item);
+      });
+
+      // Sort dates and form DayGroupEvaluation objects
+      const dayGroups: DayGroupEvaluation[] = Object.keys(dayGroupsMap)
+        .sort((a, b) => a.localeCompare(b))
+        .map(date => ({
+          date,
+          evaluations: dayGroupsMap[date],
+        }));
+
+      return {
+        title: monthTitle,
+        data: dayGroups,
+      };
+    });
   };
 
   const fetchEvaluations = async () => {
@@ -124,11 +151,18 @@ export default function EvaluationsScreen() {
     }
     setActionLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('evaluations')
-        .insert([{ description: description.trim(), evaluation_date: date, user_id: user?.id }]);
+        .insert([{ description: description.trim(), evaluation_date: date, user_id: user?.id }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (data) {
+        await scheduleItemNotifications(data.id, data.description, data.evaluation_date || data.date, 'Evaluación');
+      }
+
       setIsCreateModalOpen(false);
       setDescription('');
       fetchEvaluations();
@@ -154,6 +188,9 @@ export default function EvaluationsScreen() {
         .eq('id', selectedEval.id);
 
       if (error) throw error;
+
+      await scheduleItemNotifications(selectedEval.id, description.trim(), date, 'Evaluación');
+
       setIsEditModalOpen(false);
       setSelectedEval(null);
       setDescription('');
@@ -177,6 +214,9 @@ export default function EvaluationsScreen() {
         try {
           const { error } = await supabase.from('evaluations').delete().eq('id', id);
           if (error) throw error;
+          
+          await cancelItemNotifications(id);
+
           fetchEvaluations();
         } catch (e: any) {
           showAlert({ title: 'Error ❌', message: 'No se pudo eliminar la evaluación: ' + e.message });
@@ -198,48 +238,58 @@ export default function EvaluationsScreen() {
       ) : (
         <SectionList
           sections={evaluations}
-          keyExtractor={item => item.id}
+          keyExtractor={item => item.date}
           renderSectionHeader={({ section: { title } }) => (
             <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
               <Text style={[styles.sectionHeaderTitle, { color: colors.primary }]}>{title}</Text>
             </View>
           )}
           renderItem={({ item }) => (
-            <View style={[styles.itemCard, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
-              <View style={[styles.dayBadge, { backgroundColor: colors.primary + '18' }]}>
-                <Text style={[styles.dayText, { color: colors.primary }]}>{getDayNumber(item.date)}</Text>
-              </View>
-
-              <View style={styles.itemContent}>
-                <Text style={[styles.itemDesc, { color: colors.text }]}>{item.description}</Text>
-                <Text style={[styles.itemSubText, { color: colors.textSecondary }]}>
-                  Fecha: {new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            <View style={[styles.dayCard, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+              <View style={[styles.dayHeader, { borderBottomColor: colors.border + '44' }]}>
+                <Text style={[styles.dayHeaderText, { color: colors.primary }]}>
+                  📅 {new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </Text>
               </View>
+              <View style={styles.dayTasksContainer}>
+                {item.evaluations.map((evalItem, idx) => (
+                  <View
+                    key={evalItem.id}
+                    style={[
+                      styles.taskRow,
+                      idx > 0 && { borderTopWidth: 1, borderTopColor: colors.border + '22', marginTop: 12, paddingTop: 12 }
+                    ]}
+                  >
+                    <View style={styles.itemContent}>
+                      <Text style={[styles.itemDesc, { color: colors.text }]}>{evalItem.description}</Text>
+                    </View>
 
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: colors.backgroundElement }]}
-                  onPress={() => {
-                    setSelectedEval(item);
-                    setDescription(item.description);
-                    setDate(item.date);
-                    setIsEditModalOpen(true);
-                  }}
-                >
-                  <Svg width={18} height={18} viewBox="0 0 24 24">
-                    <Path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill={colors.text} />
-                  </Svg>
-                </TouchableOpacity>
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { backgroundColor: colors.backgroundElement }]}
+                        onPress={() => {
+                          setSelectedEval(evalItem);
+                          setDescription(evalItem.description);
+                          setDate(evalItem.date);
+                          setIsEditModalOpen(true);
+                        }}
+                      >
+                        <Svg width={18} height={18} viewBox="0 0 24 24">
+                          <Path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill={colors.text} />
+                        </Svg>
+                      </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: colors.error + '18' }]}
-                  onPress={() => handleDelete(item.id)}
-                >
-                  <Svg width={18} height={18} viewBox="0 0 24 24">
-                    <Path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill={colors.error} />
-                  </Svg>
-                </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { backgroundColor: colors.error + '18' }]}
+                        onPress={() => handleDelete(evalItem.id)}
+                      >
+                        <Svg width={18} height={18} viewBox="0 0 24 24">
+                          <Path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill={colors.error} />
+                        </Svg>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </View>
             </View>
           )}
@@ -262,7 +312,7 @@ export default function EvaluationsScreen() {
 
       {/* Modal: New Evaluation */}
       <Modal visible={isCreateModalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva Evaluación 🌟</Text>
             
@@ -321,7 +371,7 @@ export default function EvaluationsScreen() {
 
       {/* Modal: Edit Evaluation */}
       <Modal visible={isEditModalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Evaluación ✏️</Text>
             
@@ -403,6 +453,35 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  dayCard: {
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  dayHeader: {
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    paddingBottom: 6,
+  },
+  dayHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dayTasksContainer: {
+    gap: 4,
+  },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   itemCard: {
     flexDirection: 'row',

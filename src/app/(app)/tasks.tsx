@@ -38,9 +38,14 @@ interface Pending {
   created_at: string;
 }
 
+interface DayGroup {
+  date: string;
+  tasks: Task[];
+}
+
 interface TaskSection {
   title: string;
-  data: Task[];
+  data: DayGroup[];
   rawCount: number;
 }
 
@@ -135,11 +140,32 @@ export default function TasksScreen() {
       groups[monthTitle].push(task);
     });
 
-    return Object.keys(groups).map(title => ({
-      title,
-      data: collapsedMonths[title] ? [] : groups[title],
-      rawCount: groups[title].length,
-    }));
+    return Object.keys(groups).map(monthTitle => {
+      const tasksInMonth = groups[monthTitle];
+      
+      // Group tasks in this month by due_date
+      const dayGroupsMap: { [key: string]: Task[] } = {};
+      tasksInMonth.forEach(task => {
+        if (!dayGroupsMap[task.due_date]) {
+          dayGroupsMap[task.due_date] = [];
+        }
+        dayGroupsMap[task.due_date].push(task);
+      });
+
+      // Sort dates and form DayGroup objects
+      const dayGroups: DayGroup[] = Object.keys(dayGroupsMap)
+        .sort((a, b) => a.localeCompare(b))
+        .map(date => ({
+          date,
+          tasks: dayGroupsMap[date],
+        }));
+
+      return {
+        title: monthTitle,
+        data: collapsedMonths[monthTitle] ? [] : dayGroups,
+        rawCount: tasksInMonth.length,
+      };
+    });
   };
 
   const toggleMonthCollapse = (monthTitle: string) => {
@@ -314,70 +340,84 @@ export default function TasksScreen() {
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const renderTaskItem = ({ item }: { item: Task }) => {
+  const renderTaskItem = ({ item }: { item: DayGroup }) => {
     return (
-      <View style={[styles.itemCard, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.checkboxWrapper}
-          onPress={() => toggleTaskCompletion(item)}
-        >
-          <View
-            style={[
-              styles.checkbox,
-              {
-                borderColor: colors.primary,
-                backgroundColor: item.completed ? colors.primary : 'transparent',
-              },
-            ]}
-          >
-            {item.completed && (
-              <Svg width={14} height={14} viewBox="0 0 24 24">
-                <Path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#FFF" />
-              </Svg>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.itemContent}>
-          <Text
-            style={[
-              styles.itemDesc,
-              {
-                color: item.completed ? colors.textSecondary : colors.text,
-                textDecorationLine: item.completed ? 'line-through' : 'none',
-              },
-            ]}
-          >
-            {item.description}
-          </Text>
-          <Text style={[styles.itemDate, { color: colors.primary }]}>
-            📅 {formatFriendlyDate(item.due_date)}
+      <View style={[styles.dayCard, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+        <View style={[styles.dayHeader, { borderBottomColor: colors.border + '44' }]}>
+          <Text style={[styles.dayHeaderText, { color: colors.primary }]}>
+            📅 {formatFriendlyDate(item.date)}
           </Text>
         </View>
+        <View style={styles.dayTasksContainer}>
+          {item.tasks.map((task, idx) => (
+            <View
+              key={task.id}
+              style={[
+                styles.taskRow,
+                idx > 0 && { borderTopWidth: 1, borderTopColor: colors.border + '22', marginTop: 12, paddingTop: 12 }
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.checkboxWrapper}
+                onPress={() => toggleTaskCompletion(task)}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    {
+                      borderColor: colors.primary,
+                      backgroundColor: task.completed ? colors.primary : 'transparent',
+                    },
+                  ]}
+                >
+                  {task.completed && (
+                    <Svg width={14} height={14} viewBox="0 0 24 24">
+                      <Path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#FFF" />
+                    </Svg>
+                  )}
+                </View>
+              </TouchableOpacity>
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: colors.backgroundElement }]}
-            onPress={() => {
-              setSelectedTask(item);
-              setTaskDesc(item.description);
-              setTaskDate(item.due_date);
-              setIsEditTaskModalOpen(true);
-            }}
-          >
-            <Svg width={18} height={18} viewBox="0 0 24 24">
-              <Path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill={colors.text} />
-            </Svg>
-          </TouchableOpacity>
+              <View style={styles.itemContent}>
+                <Text
+                  style={[
+                    styles.itemDesc,
+                    {
+                      color: task.completed ? colors.textSecondary : colors.text,
+                      textDecorationLine: task.completed ? 'line-through' : 'none',
+                    },
+                  ]}
+                >
+                  {task.description}
+                </Text>
+              </View>
 
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: colors.error + '18' }]}
-            onPress={() => handleDeleteTask(item.id)}
-          >
-            <Svg width={18} height={18} viewBox="0 0 24 24">
-              <Path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill={colors.error} />
-            </Svg>
-          </TouchableOpacity>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionIconBtn, { backgroundColor: colors.backgroundElement }]}
+                  onPress={() => {
+                    setSelectedTask(task);
+                    setTaskDesc(task.description);
+                    setTaskDate(task.due_date);
+                    setIsEditTaskModalOpen(true);
+                  }}
+                >
+                  <Svg width={18} height={18} viewBox="0 0 24 24">
+                    <Path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill={colors.text} />
+                  </Svg>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionIconBtn, { backgroundColor: colors.error + '18' }]}
+                  onPress={() => handleDeleteTask(task.id)}
+                >
+                  <Svg width={18} height={18} viewBox="0 0 24 24">
+                    <Path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill={colors.error} />
+                  </Svg>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
         </View>
       </View>
     );
@@ -441,7 +481,7 @@ export default function TasksScreen() {
         /* SectionList grouped by Month with Collapse capabilities */
         <SectionList
           sections={getGroupedTasks()}
-          keyExtractor={item => item.id}
+          keyExtractor={item => item.date}
           renderItem={renderTaskItem}
           renderSectionHeader={renderSectionHeader}
           contentContainerStyle={[
@@ -484,7 +524,7 @@ export default function TasksScreen() {
 
       {/* Modal: Create Task */}
       <Modal visible={isTaskModalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva Tarea ❤️</Text>
             <TextInput
@@ -577,7 +617,7 @@ export default function TasksScreen() {
 
       {/* Modal: Convert Pending to Task */}
       <Modal visible={isConvertModalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Convertir a Tarea ⚡️</Text>
             
@@ -636,7 +676,7 @@ export default function TasksScreen() {
 
       {/* Modal: Edit Task */}
       <Modal visible={isEditTaskModalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Tarea ✏️</Text>
             <TextInput
@@ -740,6 +780,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 2,
+  },
+  dayCard: {
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  dayHeader: {
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    paddingBottom: 6,
+  },
+  dayHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dayTasksContainer: {
+    gap: 4,
+  },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   checkboxWrapper: {
     paddingRight: 16,

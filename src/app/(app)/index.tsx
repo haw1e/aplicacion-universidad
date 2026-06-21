@@ -48,6 +48,9 @@ export default function DashboardScreen() {
     exams: 0,
   });
   const [loadingStats, setLoadingStats] = useState(true);
+  const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
+
+
 
   // Reload data every time this screen is focused
   useFocusEffect(
@@ -103,12 +106,13 @@ export default function DashboardScreen() {
     if (!user) return;
     setLoadingStats(true);
     try {
-      // Query counts in parallel
-      const [tasksRes, pendingsRes, evaluationsRes, examsRes] = await Promise.all([
+      // Query counts and upcoming tasks in parallel
+      const [tasksRes, pendingsRes, evaluationsRes, examsRes, tasksListRes] = await Promise.all([
         supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('pendings').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('evaluations').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('exams').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('tasks').select('*').eq('user_id', user.id).eq('completed', false).order('due_date', { ascending: true }),
       ]);
 
       setStats({
@@ -117,11 +121,125 @@ export default function DashboardScreen() {
         evaluations: evaluationsRes.count || 0,
         exams: examsRes.count || 0,
       });
+
+      // Filter tasks due within 4 days (or overdue)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcoming = (tasksListRes.data || []).filter(task => {
+        if (!task.due_date) return false;
+        const taskDate = new Date(task.due_date + 'T00:00:00');
+        const diffTime = taskDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 4;
+      });
+      setUpcomingTasks(upcoming);
+
+
     } catch (e) {
       console.log('Error fetching stats:', e);
     } finally {
       setLoadingStats(false);
     }
+  };
+
+  const toggleTaskCompletion = async (task: any) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: !task.completed })
+        .eq('id', task.id);
+      
+      if (error) throw error;
+      fetchStats();
+    } catch (e: any) {
+      showAlert({ title: 'Error ❌', message: 'No se pudo actualizar la tarea: ' + e.message });
+    }
+  };
+
+  const renderUpcomingTasks = () => {
+    if (upcomingTasks.length === 0) {
+      return (
+        <View style={[styles.upcomingBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>Tareas Próximas 📅</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+            ¡Todo al día! No tienes tareas pendientes para los próximos 4 días. ✨
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.upcomingBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Tareas Próximas 📅</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
+          Tareas programadas para los próximos días:
+        </Text>
+        <View style={{ gap: 10 }}>
+          {upcomingTasks.map((task) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const taskDate = new Date(task.due_date + 'T00:00:00');
+            const diffTime = taskDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let daysLabel = '';
+            let labelColor = colors.primary;
+            if (diffDays === 0) {
+              daysLabel = 'Hoy 🚨';
+              labelColor = colors.error;
+            } else if (diffDays === 1) {
+              daysLabel = 'Mañana';
+              labelColor = colors.secondary;
+            } else if (diffDays < 0) {
+              daysLabel = `Vencida por ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'día' : 'días'} ⚠️`;
+              labelColor = colors.error;
+            } else {
+              daysLabel = `En ${diffDays} días`;
+            }
+
+            return (
+              <View
+                key={task.id}
+                style={[
+                  styles.upcomingTaskItem,
+                  { backgroundColor: colors.backgroundElement, borderColor: colors.border }
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.upcomingCheckboxWrapper}
+                  onPress={() => toggleTaskCompletion(task)}
+                >
+                  <View
+                    style={[
+                      styles.upcomingCheckbox,
+                      {
+                        borderColor: colors.primary,
+                        backgroundColor: task.completed ? colors.primary : 'transparent',
+                      },
+                    ]}
+                  >
+                    {task.completed && (
+                      <Svg width={12} height={12} viewBox="0 0 24 24">
+                        <Path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#FFF" />
+                      </Svg>
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.upcomingTaskDesc, { color: colors.text }]}>
+                    {task.description}
+                  </Text>
+                  <Text style={[styles.upcomingTaskDate, { color: labelColor }]}>
+                    📅 {new Date(task.due_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ({daysLabel})
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
   };
 
   const handleSaveQuickPending = async () => {
@@ -148,6 +266,7 @@ export default function DashboardScreen() {
       setSavingPending(false);
     }
   };
+
 
   const renderNavCard = (
     title: string,
@@ -335,7 +454,15 @@ export default function DashboardScreen() {
               >
                 <Text style={styles.quickPendingBtnText}>⚡ Pendiente Rápido</Text>
               </TouchableOpacity>
+
             </View>
+
+            {/* Show upcoming tasks on tablet inside left panel under statsBox */}
+            {isTablet && (
+              <View style={{ marginTop: 20 }}>
+                {renderUpcomingTasks()}
+              </View>
+            )}
           </View>
 
           {/* Right panel (navigation grid) */}
@@ -347,6 +474,9 @@ export default function DashboardScreen() {
               {renderNavCard('Calendario', 'Ver eventos cronológicamente', '/calendar', calIcon, 0)}
             </View>
           </View>
+
+          {/* Show upcoming tasks on phone at the bottom of the container */}
+          {!isTablet && renderUpcomingTasks()}
 
         </View>
       </ScrollView>
@@ -517,7 +647,12 @@ export default function DashboardScreen() {
               <View style={{ gap: 10 }}>
                 {renderPetOption('none', 'Ninguno ❌', 'Sin mascota en pantalla.', '❌')}
                 {renderPetOption('poro', 'Poro ☁️', 'Un esponjoso Poro de League of Legends.', require('../../../assets/images/poro.jpg'), true)}
-                {renderPetOption('kirby', 'Kirby 🌸', '¡El tierno Kirby listo para absorber apuntes!', require('../../../assets/images/kirby.jpg'), true)}
+                {renderPetOption('kirby', 'Kirby 🌸', '¡El tierno Kirby listo para absorber apuntes!', require('../../../assets/images/kirby.png'), true)}
+                {renderPetOption('junimo', 'Junimo 🌿', 'Un espíritu del bosque de Stardew Valley.', require('../../../assets/images/junimo.png'), true)}
+                {renderPetOption('kyubey', 'Kyubey 👁️', '¿Hacemos un contrato? De Madoka Magica.', require('../../../assets/images/kyubey.webp'), true)}
+                {renderPetOption('morpekob', 'Morpeko (Saciado) 🐹', 'Morpeko en su forma feliz y satisfecha de Pokémon.', require('../../../assets/images/Morpekob.webp'), true)}
+                {renderPetOption('morpekom', 'Morpeko (Voraz) 😈', 'Morpeko en su forma enojada y hambrienta de Pokémon.', require('../../../assets/images/morpekom.png'), true)}
+                {renderPetOption('napstablook', 'Napstablook 👻', 'Un fantasma melancólico de Undertale.', require('../../../assets/images/Napstablook.webp'), true)}
               </View>
             </ScrollView>
 
@@ -893,5 +1028,43 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  upcomingBox: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  upcomingTaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  upcomingCheckboxWrapper: {
+    paddingRight: 4,
+  },
+  upcomingCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  upcomingTaskDesc: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  upcomingTaskDate: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
