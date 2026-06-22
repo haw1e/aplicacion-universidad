@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useAuth } from '@/context/auth';
 import { useTheme } from '@/context/ThemeContext';
@@ -48,7 +50,14 @@ export default function EvaluationsScreen() {
   // State
   const [evaluations, setEvaluations] = useState<GroupedSection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchEvaluations(true);
+    setRefreshing(false);
+  }, [user]);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -57,7 +66,16 @@ export default function EvaluationsScreen() {
 
   // Form state
   const [description, setDescription] = useState('');
+  const [descriptions, setDescriptions] = useState<string[]>(['']);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleAddDescriptionField = () => {
+    setDescriptions([...descriptions, '']);
+  };
+
+  const handleRemoveDescriptionField = (index: number) => {
+    setDescriptions(descriptions.filter((_, idx) => idx !== index));
+  };
 
   useEffect(() => {
     fetchEvaluations();
@@ -117,9 +135,9 @@ export default function EvaluationsScreen() {
     });
   };
 
-  const fetchEvaluations = async () => {
+  const fetchEvaluations = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await supabase
         .from('evaluations')
@@ -145,28 +163,40 @@ export default function EvaluationsScreen() {
   };
 
   const handleCreate = async () => {
-    if (!description.trim() || !date) {
-      showAlert({ title: 'Error ❌', message: 'Por favor ingresa una descripción y selecciona una fecha.' });
+    if (!date) {
+      showAlert({ title: 'Error ❌', message: 'Por favor selecciona una fecha.' });
+      return;
+    }
+    const filteredDescs = descriptions.map(d => d.trim()).filter(Boolean);
+    if (filteredDescs.length === 0) {
+      showAlert({ title: 'Error ❌', message: 'Por favor ingresa al menos una descripción.' });
       return;
     }
     setActionLoading(true);
     try {
+      const insertData = filteredDescs.map(desc => ({
+        description: desc,
+        evaluation_date: date,
+        user_id: user?.id
+      }));
+
       const { data, error } = await supabase
         .from('evaluations')
-        .insert([{ description: description.trim(), evaluation_date: date, user_id: user?.id }])
-        .select()
-        .single();
+        .insert(insertData)
+        .select();
 
       if (error) throw error;
 
-      if (data) {
-        await scheduleItemNotifications(data.id, data.description, data.evaluation_date || data.date, 'Evaluación');
+      if (data && Array.isArray(data)) {
+        for (const item of data) {
+          await scheduleItemNotifications(item.id, item.description, item.evaluation_date || item.date, 'Evaluación');
+        }
       }
 
       setIsCreateModalOpen(false);
-      setDescription('');
+      setDescriptions(['']);
       fetchEvaluations();
-      showAlert({ title: '¡Creado! 🌟', message: 'La evaluación se ha guardado correctamente.' });
+      showAlert({ title: '¡Creado! 🌟', message: 'Las evaluaciones se han guardado correctamente.' });
     } catch (e: any) {
       console.error('Error al guardar evaluación:', e);
       showAlert({ title: 'Error ❌', message: 'No se pudo guardar la evaluación: ' + e.message + (e.details ? '\n' + e.details : '') });
@@ -239,6 +269,14 @@ export default function EvaluationsScreen() {
         <SectionList
           sections={evaluations}
           keyExtractor={item => item.date}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
           renderSectionHeader={({ section: { title } }) => (
             <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
               <Text style={[styles.sectionHeaderTitle, { color: colors.primary }]}>{title}</Text>
@@ -316,13 +354,73 @@ export default function EvaluationsScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva Evaluación 🌟</Text>
             
-            <TextInput
-              style={[styles.modalInput, { color: colors.text, backgroundColor: colors.backgroundElement, borderColor: colors.border }]}
-              placeholder="Descripción (ej. Control 2 de Álgebra)"
-              placeholderTextColor={colors.textSecondary + '77'}
-              value={description}
-              onChangeText={setDescription}
-            />
+            <Text style={[styles.subLabel, { color: colors.text, marginTop: 0 }]}>Actividades / Descripciones:</Text>
+            <ScrollView style={{ maxHeight: 130, marginBottom: 8 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+              <View style={{ gap: 8 }}>
+                {descriptions.map((desc, index) => (
+                  <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TextInput
+                      style={[
+                        styles.modalInput,
+                        {
+                          color: colors.text,
+                          backgroundColor: colors.backgroundElement,
+                          borderColor: colors.border,
+                          flex: 1,
+                          marginBottom: 0,
+                          height: 44,
+                          paddingHorizontal: 12
+                        }
+                      ]}
+                      placeholder={`Ej. Control 2 (Álgebra) #${index + 1}`}
+                      placeholderTextColor={colors.textSecondary + '77'}
+                      value={desc}
+                      onChangeText={(text) => {
+                        const newDescs = [...descriptions];
+                        newDescs[index] = text;
+                        setDescriptions(newDescs);
+                      }}
+                    />
+                    {descriptions.length > 1 && (
+                      <TouchableOpacity 
+                        style={{ 
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: 14, 
+                          backgroundColor: colors.backgroundElement, 
+                          justifyContent: 'center', 
+                          alignItems: 'center',
+                          borderWidth: 1.5,
+                          borderColor: colors.border
+                        }}
+                        onPress={() => handleRemoveDescriptionField(index)}
+                      >
+                        <Text style={{ color: colors.error, fontSize: 16, fontWeight: '700' }}>✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                gap: 6, 
+                alignSelf: 'flex-start', 
+                marginBottom: 14,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: colors.backgroundElement,
+                borderWidth: 1,
+                borderColor: colors.border
+              }}
+              onPress={handleAddDescriptionField}
+            >
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>+ Añadir descripción</Text>
+            </TouchableOpacity>
 
             <Text style={[styles.subLabel, { color: colors.text }]}>Fecha de la Evaluación:</Text>
             <View style={styles.calendarContainer}>

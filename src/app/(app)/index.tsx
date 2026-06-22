@@ -11,8 +11,9 @@ import {
   Alert,
   Image,
   useWindowDimensions,
+  RefreshControl,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { useTheme } from '@/context/ThemeContext';
 import { useAlert } from '@/context/AlertContext';
@@ -49,8 +50,40 @@ export default function DashboardScreen() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
+  const [carouselWidth, setCarouselWidth] = useState(0);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchProfile(),
+        fetchStats(),
+      ]);
+    } catch (e) {
+      console.log('Error refreshing dashboard:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user]);
 
+  const handleCarouselLayout = (event: any) => {
+    const { width } = event.nativeEvent.layout;
+    setCarouselWidth(width);
+  };
+
+  const handleScroll = (event: any) => {
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    if (carouselWidth > 0) {
+      const index = Math.round(contentOffset / carouselWidth);
+      if (index !== activeSlideIndex) {
+        setActiveSlideIndex(index);
+      }
+    }
+  };
+
+  const params = useLocalSearchParams();
 
   // Reload data every time this screen is focused
   useFocusEffect(
@@ -67,6 +100,15 @@ export default function DashboardScreen() {
       }
     }, [user])
   );
+
+  // Check for deep link quick add parameter
+  React.useEffect(() => {
+    if (params.quickAdd === 'true') {
+      setIsModalOpen(true);
+      // Reset params using router
+      router.setParams({ quickAdd: 'false' });
+    }
+  }, [params.quickAdd]);
 
   const loadLocalProfilePhoto = async () => {
     try {
@@ -116,6 +158,14 @@ export default function DashboardScreen() {
       ]);
 
       setStats({
+        statsResTask: tasksRes.count || 0,
+        statsResPending: pendingsRes.count || 0,
+        statsResEval: evaluationsRes.count || 0,
+        statsResExam: examsRes.count || 0,
+      } as any);
+
+      // Save count stats
+      setStats({
         tasks: tasksRes.count || 0,
         pendings: pendingsRes.count || 0,
         evaluations: evaluationsRes.count || 0,
@@ -133,7 +183,6 @@ export default function DashboardScreen() {
         return diffDays <= 4;
       });
       setUpcomingTasks(upcoming);
-
 
     } catch (e) {
       console.log('Error fetching stats:', e);
@@ -159,7 +208,7 @@ export default function DashboardScreen() {
   const renderUpcomingTasks = () => {
     if (upcomingTasks.length === 0) {
       return (
-        <View style={[styles.upcomingBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+        <View style={[styles.upcomingBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border, flex: 1 }]}>
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>Tareas Próximas 📅</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
             ¡Todo al día! No tienes tareas pendientes para los próximos 4 días. ✨
@@ -169,75 +218,77 @@ export default function DashboardScreen() {
     }
 
     return (
-      <View style={[styles.upcomingBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Tareas Próximas 📅</Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
+      <View style={[styles.upcomingBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border, flex: 1, paddingBottom: 12 }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 4 }]}>Tareas Próximas 📅</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 8 }}>
           Tareas programadas para los próximos días:
         </Text>
-        <View style={{ gap: 10 }}>
-          {upcomingTasks.map((task) => {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const taskDate = new Date(task.due_date + 'T00:00:00');
-            const diffTime = taskDate.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            let daysLabel = '';
-            let labelColor = colors.primary;
-            if (diffDays === 0) {
-              daysLabel = 'Hoy 🚨';
-              labelColor = colors.error;
-            } else if (diffDays === 1) {
-              daysLabel = 'Mañana';
-              labelColor = colors.secondary;
-            } else if (diffDays < 0) {
-              daysLabel = `Vencida por ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'día' : 'días'} ⚠️`;
-              labelColor = colors.error;
-            } else {
-              daysLabel = `En ${diffDays} días`;
-            }
+        <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          <View style={{ gap: 10, paddingBottom: 4 }}>
+            {upcomingTasks.map((task: any) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const taskDate = new Date(task.due_date + 'T00:00:00');
+              const diffTime = taskDate.getTime() - today.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              let daysLabel = '';
+              let labelColor = colors.primary;
+              if (diffDays === 0) {
+                daysLabel = 'Hoy 🚨';
+                labelColor = colors.error;
+              } else if (diffDays === 1) {
+                daysLabel = 'Mañana';
+                labelColor = colors.secondary;
+              } else if (diffDays < 0) {
+                daysLabel = `Vencida por ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'día' : 'días'} ⚠️`;
+                labelColor = colors.error;
+              } else {
+                daysLabel = `En ${diffDays} días`;
+              }
 
-            return (
-              <View
-                key={task.id}
-                style={[
-                  styles.upcomingTaskItem,
-                  { backgroundColor: colors.backgroundElement, borderColor: colors.border }
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.upcomingCheckboxWrapper}
-                  onPress={() => toggleTaskCompletion(task)}
+              return (
+                <View
+                  key={task.id}
+                  style={[
+                    styles.upcomingTaskItem,
+                    { backgroundColor: colors.backgroundElement, borderColor: colors.border, padding: 10 }
+                  ]}
                 >
-                  <View
-                    style={[
-                      styles.upcomingCheckbox,
-                      {
-                        borderColor: colors.primary,
-                        backgroundColor: task.completed ? colors.primary : 'transparent',
-                      },
-                    ]}
+                  <TouchableOpacity
+                    style={styles.upcomingCheckboxWrapper}
+                    onPress={() => toggleTaskCompletion(task)}
                   >
-                    {task.completed && (
-                      <Svg width={12} height={12} viewBox="0 0 24 24">
-                        <Path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#FFF" />
-                      </Svg>
-                    )}
-                  </View>
-                </TouchableOpacity>
+                    <View
+                      style={[
+                        styles.upcomingCheckbox,
+                        {
+                          borderColor: colors.primary,
+                          backgroundColor: task.completed ? colors.primary : 'transparent',
+                        },
+                      ]}
+                    >
+                      {task.completed && (
+                        <Svg width={12} height={12} viewBox="0 0 24 24">
+                          <Path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#FFF" />
+                        </Svg>
+                      )}
+                    </View>
+                  </TouchableOpacity>
 
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[styles.upcomingTaskDesc, { color: colors.text }]}>
-                    {task.description}
-                  </Text>
-                  <Text style={[styles.upcomingTaskDate, { color: labelColor }]}>
-                    📅 {new Date(task.due_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ({daysLabel})
-                  </Text>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.upcomingTaskDesc, { color: colors.text, fontSize: 13 }]} numberOfLines={1}>
+                      {task.description}
+                    </Text>
+                    <Text style={[styles.upcomingTaskDate, { color: labelColor, fontSize: 10 }]}>
+                      📅 {new Date(task.due_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ({daysLabel})
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
     );
   };
@@ -416,54 +467,139 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={isTablet ? styles.tabletContainer : styles.phoneContainer}>
           
-          {/* Left panel (tablet info / stats summary) */}
-          <View style={isTablet ? styles.leftPanel : styles.mobileHeaderPanel}>
-            <View style={[styles.statsBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Resumen 📊</Text>
-              
-              {loadingStats ? (
-                <ActivityIndicator color={colors.primary} style={{ margin: 20 }} />
-              ) : (
-                <View style={styles.statsGrid}>
-                  <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: colors.primary }]}>{stats.tasks}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Tareas</Text>
+          {/* Left panel (tablet stats and upcoming) or horizontal carousel (phone) */}
+          {isTablet ? (
+            <View style={styles.leftPanel}>
+              <View style={[styles.statsBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Resumen 📊</Text>
+                
+                {loadingStats ? (
+                  <ActivityIndicator color={colors.primary} style={{ margin: 20 }} />
+                ) : (
+                  <View style={styles.statsGrid}>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: colors.primary }]}>{stats.tasks}</Text>
+                      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Tareas</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: colors.secondary }]}>{stats.pendings}</Text>
+                      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pendientes</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: colors.text }]}>{stats.evaluations}</Text>
+                      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Evaluaciones</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: colors.primary }]}>{stats.exams}</Text>
+                      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Exámenes</Text>
+                    </View>
                   </View>
-                  <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: colors.secondary }]}>{stats.pendings}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pendientes</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: colors.text }]}>{stats.evaluations}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Evaluaciones</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: colors.primary }]}>{stats.exams}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Exámenes</Text>
-                  </View>
-                </View>
-              )}
+                )}
 
-              {/* Quick pending trigger button */}
-              <TouchableOpacity
-                style={[styles.quickPendingBtn, { backgroundColor: colors.primary }]}
-                onPress={() => setIsModalOpen(true)}
-              >
-                <Text style={styles.quickPendingBtnText}>⚡ Pendiente Rápido</Text>
-              </TouchableOpacity>
+                {/* Quick pending trigger button */}
+                <TouchableOpacity
+                  style={[styles.quickPendingBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => setIsModalOpen(true)}
+                >
+                  <Text style={styles.quickPendingBtnText}>⚡ Pendiente Rápido</Text>
+                </TouchableOpacity>
+              </View>
 
-            </View>
-
-            {/* Show upcoming tasks on tablet inside left panel under statsBox */}
-            {isTablet && (
+              {/* Show upcoming tasks on tablet inside left panel under statsBox */}
               <View style={{ marginTop: 20 }}>
                 {renderUpcomingTasks()}
               </View>
-            )}
-          </View>
+            </View>
+          ) : (
+            <View style={styles.mobileHeaderPanel} onLayout={handleCarouselLayout}>
+              {carouselWidth > 0 && (
+                <View>
+                  <ScrollView
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    style={{ width: carouselWidth }}
+                    contentContainerStyle={{ width: carouselWidth * 2 }}
+                  >
+                    {/* Slide 1: Resumen */}
+                    <View style={{ width: carouselWidth, paddingRight: 4 }}>
+                      <View style={[styles.statsBox, { backgroundColor: colors.backgroundCard, borderColor: colors.border, height: 260 }]}>
+                        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Resumen 📊</Text>
+                        
+                        {loadingStats ? (
+                          <ActivityIndicator color={colors.primary} style={{ margin: 20 }} />
+                        ) : (
+                          <View style={[styles.statsGrid, { marginBottom: 12 }]}>
+                            <View style={[styles.statItem, { paddingVertical: 6 }]}>
+                              <Text style={[styles.statValue, { color: colors.primary, fontSize: 22 }]}>{stats.tasks}</Text>
+                              <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: 11 }]}>Tareas</Text>
+                            </View>
+                            <View style={[styles.statItem, { paddingVertical: 6 }]}>
+                              <Text style={[styles.statValue, { color: colors.secondary, fontSize: 22 }]}>{stats.pendings}</Text>
+                              <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: 11 }]}>Pendientes</Text>
+                            </View>
+                            <View style={[styles.statItem, { paddingVertical: 6 }]}>
+                              <Text style={[styles.statValue, { color: colors.text, fontSize: 22 }]}>{stats.evaluations}</Text>
+                              <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: 11 }]}>Evaluaciones</Text>
+                            </View>
+                            <View style={[styles.statItem, { paddingVertical: 6 }]}>
+                              <Text style={[styles.statValue, { color: colors.primary, fontSize: 22 }]}>{stats.exams}</Text>
+                              <Text style={[styles.statLabel, { color: colors.textSecondary, fontSize: 11 }]}>Exámenes</Text>
+                            </View>
+                          </View>
+                        )}
+
+                        <TouchableOpacity
+                          style={[styles.quickPendingBtn, { backgroundColor: colors.primary, height: 44 }]}
+                          onPress={() => setIsModalOpen(true)}
+                        >
+                          <Text style={styles.quickPendingBtnText}>⚡ Pendiente Rápido</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Slide 2: Tareas Próximas */}
+                    <View style={{ width: carouselWidth, paddingLeft: 4 }}>
+                      <View style={{ height: 260 }}>
+                        {renderUpcomingTasks()}
+                      </View>
+                    </View>
+                  </ScrollView>
+
+                  {/* Pagination dots below horizontal ScrollView */}
+                  <View style={styles.paginationDots}>
+                    <View 
+                      style={[
+                        styles.dot, 
+                        { backgroundColor: activeSlideIndex === 0 ? colors.primary : colors.border }
+                      ]} 
+                    />
+                    <View 
+                      style={[
+                        styles.dot, 
+                        { backgroundColor: activeSlideIndex === 1 ? colors.primary : colors.border }
+                      ]} 
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Right panel (navigation grid) */}
           <View style={isTablet ? styles.rightPanel : styles.navPanel}>
@@ -474,9 +610,6 @@ export default function DashboardScreen() {
               {renderNavCard('Calendario', 'Ver eventos cronológicamente', '/calendar', calIcon, 0)}
             </View>
           </View>
-
-          {/* Show upcoming tasks on phone at the bottom of the container */}
-          {!isTablet && renderUpcomingTasks()}
 
         </View>
       </ScrollView>
@@ -1066,5 +1199,17 @@ const styles = StyleSheet.create({
   upcomingTaskDate: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  paginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

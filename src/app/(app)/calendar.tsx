@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   useWindowDimensions,
+  RefreshControl,
 } from 'react-native';
 import { useAuth } from '@/context/auth';
 import { useTheme } from '@/context/ThemeContext';
@@ -44,11 +45,18 @@ export default function CalendarScreen() {
 
   // State
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [allPendings, setAllPendings] = useState<Pending[]>([]);
   const [allEvaluations, setAllEvaluations] = useState<any[]>([]);
   const [allExams, setAllExams] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAllData(true);
+    setRefreshing(false);
+  }, [user]);
 
   // Screen items filtered by selected date
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
@@ -65,9 +73,9 @@ export default function CalendarScreen() {
   }, [selectedDate, allTasks, allPendings, allEvaluations, allExams]);
 
   // Fetch all tasks, pendings, evaluations, and exams to display on calendar
-  const fetchAllData = async () => {
+  const fetchAllData = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [tasksRes, pendingsRes, evalsRes, examsRes] = await Promise.all([
         supabase.from('tasks').select('*').eq('user_id', user.id),
@@ -248,6 +256,14 @@ export default function CalendarScreen() {
             isTablet && styles.tabletScrollContent
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
         >
           {/* Calendar Box */}
           <View style={styles.calendarPanel}>
@@ -287,6 +303,9 @@ export default function CalendarScreen() {
                         {
                           borderColor: isSelected ? colors.primary : (isToday ? colors.primaryLight : colors.border + '15'),
                           backgroundColor: isSelected ? colors.primaryLight + '35' : (isToday ? colors.primary + '08' : colors.backgroundCard),
+                          justifyContent: isTablet ? 'flex-start' : 'center',
+                          alignItems: isTablet ? 'stretch' : 'center',
+                          padding: isTablet ? 3 : 2,
                         }
                       ]}
                       onPress={() => setSelectedDate(dateStr)}
@@ -297,29 +316,45 @@ export default function CalendarScreen() {
                           {
                             color: isDisabled ? colors.textSecondary + '44' : (isToday ? colors.primary : colors.text),
                             fontWeight: isSelected || isToday ? '800' : '600',
+                            textAlign: isTablet ? 'right' : 'center',
+                            marginBottom: isTablet ? 2 : 0,
                           }
                         ]}
                       >
                         {date.day}
                       </Text>
                       
-                      <View style={styles.dayBadgesContainer}>
-                        {displayItems.map((item, idx) => (
-                          <View key={item.id + idx} style={[styles.miniBadge, { backgroundColor: item.color + '15' }]}>
-                            <Text numberOfLines={1} style={[styles.miniBadgeText, { color: item.color }]}>
-                              {item.type === 'exam' ? '🎓 ' : item.type === 'eval' ? '🌟 ' : item.type === 'task' ? '📝 ' : '⚡ '}
-                              {truncateText(item.text, isTablet ? 12 : 5)}
-                            </Text>
+                      {isTablet ? (
+                        <View style={styles.dayBadgesContainer}>
+                          {displayItems.map((item, idx) => (
+                            <View key={item.id + idx} style={[styles.miniBadge, { backgroundColor: item.color + '15' }]}>
+                              <Text numberOfLines={1} style={[styles.miniBadgeText, { color: item.color }]}>
+                                {item.type === 'exam' ? '🎓 ' : item.type === 'eval' ? '🌟 ' : item.type === 'task' ? '📝 ' : '⚡ '}
+                                {truncateText(item.text, 12)}
+                              </Text>
+                            </View>
+                          ))}
+                          {remainingCount > 0 && (
+                            <View style={[styles.miniBadge, { backgroundColor: colors.backgroundElement }]}>
+                              <Text style={[styles.miniBadgeText, { color: colors.textSecondary }]}>
+                                +{remainingCount} más
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      ) : (
+                        (dayExams.length > 0 || dayEvals.length > 0 || dayTasks.length > 0 || dayPendings.length > 0) ? (
+                          <View style={styles.dotsRow}>
+                            {dayExams.length > 0 && <View style={[styles.dot, { backgroundColor: colors.warning }]} />}
+                            {dayEvals.length > 0 && <View style={[styles.dot, { backgroundColor: colors.success }]} />}
+                            {dayTasks.length > 0 && <View style={[styles.dot, { backgroundColor: colors.primary }]} />}
+                            {dayPendings.length > 0 && <View style={[styles.dot, { backgroundColor: colors.secondary }]} />}
                           </View>
-                        ))}
-                        {remainingCount > 0 && (
-                          <View style={[styles.miniBadge, { backgroundColor: colors.backgroundElement }]}>
-                            <Text style={[styles.miniBadgeText, { color: colors.textSecondary }]}>
-                              +{remainingCount} más
-                            </Text>
-                          </View>
-                        )}
-                      </View>
+                        ) : (
+                          // Espaciador invisible para alinear el número verticalmente
+                          <View style={styles.emptyDotsRow} />
+                        )
+                      )}
                     </TouchableOpacity>
                   );
                 }}
@@ -340,7 +375,7 @@ export default function CalendarScreen() {
                   'stylesheet.day.basic': {
                     base: {
                       width: cellWidth,
-                      height: isTablet ? 90 : 75,
+                      height: isTablet ? 90 : 44,
                       alignItems: 'stretch',
                       justifyContent: 'flex-start',
                     },
@@ -539,5 +574,22 @@ const styles = StyleSheet.create({
   miniBadgeText: {
     fontSize: 8,
     fontWeight: '800',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+    height: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  emptyDotsRow: {
+    height: 6,
+    marginTop: 2,
   },
 });

@@ -65,6 +65,13 @@ export default function AppLayout() {
           title: 'Configuraciones ⚙️',
         }}
       />
+      <Stack.Screen
+        name="quick-add-modal"
+        options={{
+          presentation: 'transparentModal',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

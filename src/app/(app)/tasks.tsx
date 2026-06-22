@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,6 +12,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useAuth } from '@/context/auth';
 import { useTheme } from '@/context/ThemeContext';
@@ -58,10 +60,17 @@ export default function TasksScreen() {
   // View state
   const [viewMode, setViewMode] = useState<'tasks' | 'pendings'>('tasks');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Lists
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pendings, setPendings] = useState<Pending[]>([]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData(true);
+    setRefreshing(false);
+  }, [viewMode, user]);
   
   // Collapse/Expand state for grouped tasks sections
   const [collapsedMonths, setCollapsedMonths] = useState<{ [key: string]: boolean }>({});
@@ -74,10 +83,28 @@ export default function TasksScreen() {
 
   // Form inputs state
   const [taskDesc, setTaskDesc] = useState('');
+  const [taskDescs, setTaskDescs] = useState<string[]>(['']);
   const [taskDate, setTaskDate] = useState(new Date().toISOString().split('T')[0]);
   const [pendingDesc, setPendingDesc] = useState('');
+  const [pendingDescs, setPendingDescs] = useState<string[]>(['']);
   const [selectedPending, setSelectedPending] = useState<Pending | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const handleAddTaskDescField = () => {
+    setTaskDescs([...taskDescs, '']);
+  };
+
+  const handleRemoveTaskDescField = (index: number) => {
+    setTaskDescs(taskDescs.filter((_, idx) => idx !== index));
+  };
+
+  const handleAddPendingDescField = () => {
+    setPendingDescs([...pendingDescs, '']);
+  };
+
+  const handleRemovePendingDescField = (index: number) => {
+    setPendingDescs(pendingDescs.filter((_, idx) => idx !== index));
+  };
   
   // Loader for actions
   const [actionLoading, setActionLoading] = useState(false);
@@ -86,9 +113,9 @@ export default function TasksScreen() {
     fetchData();
   }, [viewMode, user]);
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       if (viewMode === 'tasks') {
         const { data, error } = await supabase
@@ -194,19 +221,31 @@ export default function TasksScreen() {
 
   // Create Task
   const handleCreateTask = async () => {
-    if (!taskDesc.trim() || !taskDate) {
-      showAlert({ title: 'Error ❌', message: 'Completa la descripción y selecciona una fecha.' });
+    if (!taskDate) {
+      showAlert({ title: 'Error ❌', message: 'Selecciona una fecha.' });
+      return;
+    }
+    const filteredDescs = taskDescs.map(d => d.trim()).filter(Boolean);
+    if (filteredDescs.length === 0) {
+      showAlert({ title: 'Error ❌', message: 'Ingresa al menos una descripción.' });
       return;
     }
     setActionLoading(true);
     try {
+      const insertData = filteredDescs.map(desc => ({
+        description: desc,
+        due_date: taskDate,
+        completed: false,
+        user_id: user?.id
+      }));
+
       const { error } = await supabase
         .from('tasks')
-        .insert([{ description: taskDesc.trim(), due_date: taskDate, completed: false, user_id: user?.id }]);
+        .insert(insertData);
       
       if (error) throw error;
       setIsTaskModalOpen(false);
-      setTaskDesc('');
+      setTaskDescs(['']);
       fetchData();
     } catch (e: any) {
       showAlert({ title: 'Error ❌', message: 'No se pudo guardar la tarea: ' + e.message });
@@ -217,19 +256,25 @@ export default function TasksScreen() {
 
   // Create Pending
   const handleCreatePending = async () => {
-    if (!pendingDesc.trim()) {
-      showAlert({ title: 'Error ❌', message: 'Ingresa una descripción.' });
+    const filteredDescs = pendingDescs.map(d => d.trim()).filter(Boolean);
+    if (filteredDescs.length === 0) {
+      showAlert({ title: 'Error ❌', message: 'Ingresa al menos una descripción.' });
       return;
     }
     setActionLoading(true);
     try {
+      const insertData = filteredDescs.map(desc => ({
+        description: desc,
+        user_id: user?.id
+      }));
+
       const { error } = await supabase
         .from('pendings')
-        .insert([{ description: pendingDesc.trim(), user_id: user?.id }]);
+        .insert(insertData);
       
       if (error) throw error;
       setIsPendingModalOpen(false);
-      setPendingDesc('');
+      setPendingDescs(['']);
       fetchData();
     } catch (e: any) {
       showAlert({ title: 'Error ❌', message: 'No se pudo guardar el pendiente: ' + e.message });
@@ -488,6 +533,14 @@ export default function TasksScreen() {
             styles.listContainer,
             isTablet && { alignSelf: 'center', width: '100%', maxWidth: 700 },
           ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -506,6 +559,14 @@ export default function TasksScreen() {
             styles.listContainer,
             isTablet && { alignSelf: 'center', width: '100%', maxWidth: 700 },
           ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -527,13 +588,73 @@ export default function TasksScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva Tarea ❤️</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.text, backgroundColor: colors.backgroundElement, borderColor: colors.border }]}
-              placeholder="Descripción de la tarea..."
-              placeholderTextColor={colors.textSecondary + '77'}
-              value={taskDesc}
-              onChangeText={setTaskDesc}
-            />
+            <Text style={[styles.subLabel, { color: colors.text, marginTop: 0 }]}>Actividades / Descripciones:</Text>
+            <ScrollView style={{ maxHeight: 130, marginBottom: 8 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+              <View style={{ gap: 8 }}>
+                {taskDescs.map((desc, index) => (
+                  <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TextInput
+                      style={[
+                        styles.modalInput,
+                        {
+                          color: colors.text,
+                          backgroundColor: colors.backgroundElement,
+                          borderColor: colors.border,
+                          flex: 1,
+                          marginBottom: 0,
+                          height: 44,
+                          paddingHorizontal: 12
+                        }
+                      ]}
+                      placeholder={`Ej. Estudiar Álgebra #${index + 1}`}
+                      placeholderTextColor={colors.textSecondary + '77'}
+                      value={desc}
+                      onChangeText={(text) => {
+                        const newDescs = [...taskDescs];
+                        newDescs[index] = text;
+                        setTaskDescs(newDescs);
+                      }}
+                    />
+                    {taskDescs.length > 1 && (
+                      <TouchableOpacity 
+                        style={{ 
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: 14, 
+                          backgroundColor: colors.backgroundElement, 
+                          justifyContent: 'center', 
+                          alignItems: 'center',
+                          borderWidth: 1.5,
+                          borderColor: colors.border
+                        }}
+                        onPress={() => handleRemoveTaskDescField(index)}
+                      >
+                        <Text style={{ color: colors.error, fontSize: 16, fontWeight: '700' }}>✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                gap: 6, 
+                alignSelf: 'flex-start', 
+                marginBottom: 14,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: colors.backgroundElement,
+                borderWidth: 1,
+                borderColor: colors.border
+              }}
+              onPress={handleAddTaskDescField}
+            >
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>+ Añadir descripción</Text>
+            </TouchableOpacity>
 
             <Text style={[styles.subLabel, { color: colors.text }]}>Seleccionar Fecha:</Text>
             <View style={styles.calendarContainer}>
@@ -562,7 +683,7 @@ export default function TasksScreen() {
                 style={[styles.modalBtn, { backgroundColor: colors.backgroundElement }]}
                 onPress={() => {
                   setIsTaskModalOpen(false);
-                  setTaskDesc('');
+                  setTaskDescs(['']);
                 }}
               >
                 <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancelar</Text>
@@ -584,21 +705,80 @@ export default function TasksScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundCard, borderColor: colors.border, maxWidth: 450 }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Nuevo Pendiente ⭐️</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.text, backgroundColor: colors.backgroundElement, borderColor: colors.border, height: 80 }]}
-              placeholder="Descripción del pendiente..."
-              placeholderTextColor={colors.textSecondary + '77'}
-              multiline
-              value={pendingDesc}
-              onChangeText={setPendingDesc}
-            />
+            <Text style={[styles.subLabel, { color: colors.text, marginTop: 0 }]}>Pendientes / Descripciones:</Text>
+            <ScrollView style={{ maxHeight: 130, marginBottom: 8 }} showsVerticalScrollIndicator={true}>
+              <View style={{ gap: 8 }}>
+                {pendingDescs.map((desc, index) => (
+                  <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TextInput
+                      style={[
+                        styles.modalInput,
+                        {
+                          color: colors.text,
+                          backgroundColor: colors.backgroundElement,
+                          borderColor: colors.border,
+                          flex: 1,
+                          marginBottom: 0,
+                          height: 44,
+                          paddingHorizontal: 12
+                        }
+                      ]}
+                      placeholder={`Ej. Comprar cuaderno #${index + 1}`}
+                      placeholderTextColor={colors.textSecondary + '77'}
+                      value={desc}
+                      onChangeText={(text) => {
+                        const newDescs = [...pendingDescs];
+                        newDescs[index] = text;
+                        setPendingDescs(newDescs);
+                      }}
+                    />
+                    {pendingDescs.length > 1 && (
+                      <TouchableOpacity 
+                        style={{ 
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: 14, 
+                          backgroundColor: colors.backgroundElement, 
+                          justifyContent: 'center', 
+                          alignItems: 'center',
+                          borderWidth: 1.5,
+                          borderColor: colors.border
+                        }}
+                        onPress={() => handleRemovePendingDescField(index)}
+                      >
+                        <Text style={{ color: colors.error, fontSize: 16, fontWeight: '700' }}>✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                gap: 6, 
+                alignSelf: 'flex-start', 
+                marginBottom: 14,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: colors.backgroundElement,
+                borderWidth: 1,
+                borderColor: colors.border
+              }}
+              onPress={handleAddPendingDescField}
+            >
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>+ Añadir pendiente</Text>
+            </TouchableOpacity>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: colors.backgroundElement }]}
                 onPress={() => {
                   setIsPendingModalOpen(false);
-                  setPendingDesc('');
+                  setPendingDescs(['']);
                 }}
               >
                 <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancelar</Text>

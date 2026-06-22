@@ -2,7 +2,7 @@
   "expo": {
     "name": "FastNotes",
     "slug": "fastnotes",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "fastnotes",
@@ -29,7 +29,30 @@
           "resizeMode": "contain"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-android-widget/app.plugin",
+        {
+          "widgets": [
+            {
+              "name": "CalendarWidgetPhone",
+              "label": "FastNotes Agenda (Móvil)",
+              "minWidth": "180dp",
+              "minHeight": "180dp",
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical"
+            },
+            {
+              "name": "CalendarWidgetTablet",
+              "label": "FastNotes Agenda (Tablet)",
+              "minWidth": "320dp",
+              "minHeight": "180dp",
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical"
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

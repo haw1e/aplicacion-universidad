@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
-  "apkUrl": "https://github.com/haw1e/aplicacion-universidad/releases/download/v1.0.1/FastNotes.apk",
-  "changelog": "Prueba de actualización"
+  "version": "1.0.2",
+  "apkUrl": "https://github.com/haw1e/aplicacion-universidad/releases/download/v1.0.2/FastNotes.apk",
+  "changelog": "Widgets de calendario (uno para móvil y otro para tablet), función pull-to-refresh"
 }
