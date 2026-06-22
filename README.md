@@ -7,33 +7,58 @@ Una aplicación universal para dispositivos móviles y web desarrollada con **Re
 ## ✨ Características Principales
 
 ### 🐾 1. Mascotas de Compañía Interactivas (Companion Pets)
-* **Compañeros Animados:** Elige entre un esponjoso **Poro ☁️** (de League of Legends) o el tierno **Kirby 🌸** para que caminen y floten en tu pantalla.
-* **Comportamiento Autónomo:** Las mascotas caminan aleatoriamente, respiran/flotan de forma constante y expresan burbujas de diálogo con mensajes motivacionales y divertidos sobre el estudio.
-* **Mecánica de Arrastre (Draggable):** Puedes arrastrar y soltar a tu mascota en cualquier parte de la pantalla si interrumpe la visualización de algún botón o texto. La burbuja de diálogo y los efectos visuales la seguirán perfectamente.
-* **Interacciones al Tocar:** Haz clic o toca a tu mascota para que realice un salto de alegría y emita ráfagas de estrellas ✨ y corazones 💖.
+* **Compañeros Animados:** Elige a tu compañero de estudio favorito entre una tierna variedad:
+  * **Poro ☁️** (El esponjoso guardián del Abismo de los Lamentos de League of Legends)
+  * **Kirby 🌸** (El glotón y tierno héroe rosa de Nintendo)
+  * **Junimo 🌿** (El espíritu guardián del bosque de Stardew Valley)
+  * **Kyubey 🌟** (El misterioso mensajero mágico de Madoka Magica)
+  * **Morpeko (Full Belly) 🐹** (La forma simpática y hambrienta de este Pokémon)
+  * **Morpeko (Hangry) 😡** (La versión molesta y oscura de Morpeko cuando tiene hambre)
+  * **Napstablook 👻** (El fantasma melómano e introvertido de Undertale)
+* **Comportamiento Autónomo:** Las mascotas caminan de forma aleatoria por la pantalla, respiran/flotan de forma constante y muestran burbujas de diálogo personalizadas con frases motivacionales o divertidas específicas de su universo.
+* **Mecánica de Arrastre (Draggable):** Si la mascota bloquea algún botón, puedes arrastrarla libremente a cualquier rincón de la pantalla. La burbuja de diálogo y los efectos la seguirán fluidamente.
+* **Interacciones al Tocar:** Toca a tu mascota para ver un divertido salto de alegría acompañado de un efecto festivo de estrellas ✨ y corazones 💖.
 
-### 📅 2. Calendario Académico Expandido
-* **Visualización Completa:** Un calendario mensual interactivo donde se marcan con pequeños badges informativos los exámenes (🎓), evaluaciones (🌟), tareas (📝) y pendientes rápidos (⚡).
-* **Organización en Columna:** Un diseño limpio que sitúa la lista de actividades del día seleccionado **directamente debajo del calendario**, adaptándose elegantemente tanto a teléfonos como a tablets (sin divisiones laterales incómodas).
-* **Detalles al Instante:** Toca cualquier día para desplegar y revisar al instante todas tus responsabilidades programadas.
+### 📅 2. Calendario Académico Inteligente
+* **Visualización Mensual:** Un calendario interactivo completo donde cada día muestra badges informativos según su tipo de actividad: exámenes (🎓), evaluaciones (🌟), tareas (📝) y pendientes rápidos (⚡).
+* **Diseño Responsivo Unificado:** El listado detallado de actividades del día seleccionado se despliega directamente debajo del calendario, optimizando el espacio tanto en pantallas móviles como en tablets sin molestas divisiones.
 
 ### 📝 3. Gestor de Tareas y Pendientes Rápidos
-* **Doble Panel Deslizable:** Alterna fácilmente entre tus Tareas formales (con fecha límite) y Pendientes Rápidos redactados al instante.
-* **Switch Animado Ultra-Limpio:** Transición fluida impulsada por curvas Bezier cúbicas de alta velocidad que elimina por completo cualquier rebote ("jiggle").
-* **Creación y Conversión:** Guarda un pendiente velozmente y conviértelo más tarde en una tarea académica formal asignándole una fecha límite con un solo clic.
+* **Doble Panel Deslizable:** Alterna fácilmente entre tus Tareas formales (con fecha límite) y Pendientes Rápidos con un switch animado de alta precisión (curvas Bezier) libre de rebotes ("jiggle").
+* **Creación y Conversión:** Registra una idea o pendiente en un segundo y conviértelo más tarde en una tarea académica formal con fecha de entrega con un solo toque.
 
-### 📊 4. Evaluaciones y Exámenes
-* **Clasificación Clara:** Secciones separadas y organizadas cronológicamente para ingresar calificaciones, controles, entregas de proyectos y exámenes finales.
-* **Base de Datos Segura:** Todos los registros académicos se sincronizan en tiempo real mediante la integración de base de datos relacional.
+### 📊 4. Planificador de Evaluaciones y Exámenes
+* **Clasificación Cronológica:** Secciones dedicadas para controles, proyectos, entregas y exámenes finales de tus asignaturas.
+* **Base de Datos Relacional:** Almacenamiento seguro sincronizado en tiempo real mediante integración con Supabase.
 
-### 👤 5. Perfil de Estudiante y Ajustes
-* **Personalización:** Modifica tu nombre completo y sube una foto de perfil personalizada desde la galería de tu dispositivo o cámara.
-* **Almacenamiento Local Híbrido:** Integración inteligente que respalda tus preferencias de sesión e imagen de perfil localmente de forma segura en Web y dispositivos móviles nativos.
-* **Seguridad:** Panel de cambio de contraseña encriptado conectado directamente con el motor de autenticación.
+### 🚨 5. Recordatorios y Notificaciones Locales Automáticas
+* **Recordatorios Inteligentes:** Mediante `expo-notifications`, la aplicación programa alertas automáticas en tu dispositivo para avisarte sobre tus exámenes y evaluaciones:
+  * **7 días antes** a las 9:00 AM 📅
+  * **1 día antes** a las 9:00 AM (¡Mañana es el día!) 🚨
 
-### 💬 6. Sistema de Alertas y Confirmaciones Personalizadas
-* **Coherencia Visual:** Se han reemplazado los cuadros de alerta genéricos del navegador y del sistema (`Alert.alert` y `window.confirm`) por **diálogos modales personalizados dentro de la propia aplicación**.
-* **Integración de Colores:** Los diálogos de alerta e información adoptan los colores exactos del tema claro y oscuro, mostrando botones de peligro en rojo pastel para acciones destructivas (como eliminar eventos).
+### 📱 6. Widgets Interactivos para la Pantalla de Inicio (Android)
+* **Acceso desde el Escritorio:** Soporte nativo para Widgets interactivos mediante `react-native-android-widget`:
+  * **CalendarWidgetPhone**: Versión vertical optimizada para teléfonos móviles.
+  * **CalendarWidgetTablet**: Versión expandida ideal para tablets.
+* **Interactividad en Tiempo Real:** Revisa tu calendario semanal, cambia de día directamente desde el widget y visualiza las actividades pendientes sin abrir la aplicación.
+* **Sincronización en Segundo Plano:** Los widgets leen la sesión de Supabase de manera segura mediante `SecureStore` y se actualizan automáticamente al realizar cambios dentro de la app o añadir nuevas notas rápidas.
+
+### 🔗 7. Enlaces Profundos (Deep Linking)
+* **Añadido Veloz:** Al tocar el botón de añadir (+) en el Widget de Android, se ejecuta el protocolo `fastnotes://quick-add-modal` para abrir la app al instante con un modal flotante listo para recibir texto de inmediato.
+
+### 🚀 8. Actualizaciones Automáticas Over-The-Air (OTA)
+* **Buscador de Versiones:** La aplicación se conecta al repositorio remoto de GitHub (`version.json`) para comprobar si existe una nueva compilación del APK.
+* **Pantalla de Actualización:** Si hay una versión más reciente disponible, muestra un modal con el historial de cambios (*changelog*) y un acceso directo para descargar e instalar el nuevo APK.
+
+### 🎨 9. Soporte de Temas (Claro y Oscuro)
+* **Personalización Visual:** Alterna entre el **Modo Claro ☀️** (con tonos rosas pastel relajantes) y el **Modo Oscuro 🌙** (tonos uva y morado oscuro suaves para descansar la vista de noche), con opción de ajuste automático basado en el sistema operativo.
+
+### 🔒 10. Perfil de Estudiante y Seguridad
+* **Gestión de Perfil:** Personaliza tu nombre y tu avatar de perfil utilizando imágenes de la galería o de la cámara, persistidos mediante un sistema híbrido (local y remoto) para asegurar el funcionamiento sin conexión.
+* **Autenticación Robusta:** Conexión directa a Supabase Auth para un inicio de sesión seguro, registro y panel encriptado de cambio de contraseña.
+
+### 💬 11. Diálogos Modales Personalizados
+* **Estilo Coherente:** Alertas y diálogos de confirmación completamente rediseñados integrando la paleta de colores del tema activo, reemplazando las ventanas emergentes nativas del sistema (`Alert.alert` y `window.confirm`).
 
 ---
 
