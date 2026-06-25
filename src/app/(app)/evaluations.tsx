@@ -47,6 +47,45 @@ export default function EvaluationsScreen() {
   const { colors } = useTheme();
   const { showConfirm, showAlert } = useAlert();
 
+  const formatModalDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay();
+      const dayOfMonth = dateObj.getDate();
+      const monthIndex = dateObj.getMonth();
+
+      const weekDays = [
+        'Domingo',
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado'
+      ];
+      
+      const months = [
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre'
+      ];
+
+      return `${weekDays[dayOfWeek]}, ${dayOfMonth} ${months[monthIndex]}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   // State
   const [evaluations, setEvaluations] = useState<GroupedSection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,7 +325,7 @@ export default function EvaluationsScreen() {
             <View style={[styles.dayCard, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}>
               <View style={[styles.dayHeader, { borderBottomColor: colors.border + '44' }]}>
                 <Text style={[styles.dayHeaderText, { color: colors.primary }]}>
-                  📅 {new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  📅 {formatModalDate(item.date)}
                 </Text>
               </View>
               <View style={styles.dayTasksContainer}>
@@ -422,11 +461,12 @@ export default function EvaluationsScreen() {
               <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>+ Añadir descripción</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.subLabel, { color: colors.text }]}>Fecha de la Evaluación:</Text>
+            <Text style={[styles.subLabel, { color: colors.text }]}>Fecha de la Evaluación: {formatModalDate(date)}</Text>
             <View style={styles.calendarContainer}>
               <Calendar
                 current={date}
                 onDayPress={day => setDate(day.dateString)}
+                monthFormat={'MMMM'}
                 markedDates={{
                   [date]: { selected: true, selectedColor: colors.primary },
                 }}
@@ -481,11 +521,12 @@ export default function EvaluationsScreen() {
               onChangeText={setDescription}
             />
 
-            <Text style={[styles.subLabel, { color: colors.text }]}>Fecha:</Text>
+            <Text style={[styles.subLabel, { color: colors.text }]}>Fecha: {formatModalDate(date)}</Text>
             <View style={styles.calendarContainer}>
               <Calendar
                 current={date}
                 onDayPress={day => setDate(day.dateString)}
+                monthFormat={'MMMM'}
                 markedDates={{
                   [date]: { selected: true, selectedColor: colors.primary },
                 }}

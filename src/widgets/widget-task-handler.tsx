@@ -272,14 +272,18 @@ function CalendarWidgetPhone({
             <TextWidget text="◀" style={{ fontSize: 9, color: COLORS.primary }} />
           </FlexWidget>
           
-          <TextWidget
-            text={getMonthYearLabel(weekStart)}
-            style={{
-              fontSize: 12,
-              fontWeight: 'bold',
-              color: COLORS.text,
-            }}
-          />
+          <FlexWidget
+            clickAction="OPEN_APP"
+          >
+            <TextWidget
+              text={getMonthYearLabel(weekStart)}
+              style={{
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: COLORS.text,
+              }}
+            />
+          </FlexWidget>
 
           <FlexWidget
             clickAction="NEXT_WEEK"
@@ -374,7 +378,10 @@ function CalendarWidgetPhone({
           />
         </FlexWidget>
       ) : (
-        <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
+        <FlexWidget
+          clickAction="OPEN_APP"
+          style={{ flexDirection: 'column', flex: 1 }}
+        >
           {displayEvents.map((event) => {
             let typeColor: ColorProp = COLORS.primary;
             if (event.type === 'pending') typeColor = COLORS.secondary;
@@ -434,7 +441,22 @@ function CalendarWidgetPhone({
 }
 
 // ----------------------------------------------------
-// CalendarWidgetTablet (Wider Side-by-Side Layout)
+const formatWidgetDate = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr + 'T00:00:00');
+    const weekday = d.toLocaleDateString('es-ES', { weekday: 'long' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('es-ES', { month: 'long' });
+    const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+    return `${capitalizedWeekday}, ${day} ${capitalizedMonth}`;
+  } catch (e) {
+    return dateStr;
+  }
+};
+
+// ----------------------------------------------------
+// CalendarWidgetTablet (Streamlined Day-by-Day Layout)
 // ----------------------------------------------------
 function CalendarWidgetTablet({ 
   events, 
@@ -447,11 +469,10 @@ function CalendarWidgetTablet({
   isLoggedIn: boolean; 
   isLoading: boolean;
   selectedDate: string;
-  weekStart: string;
+  weekStart?: string;
 }) {
-  const weekDays = getWeekDays(weekStart, 14);
   const selectedDateEvents = events.filter(e => e.date === selectedDate);
-  const displayEvents = selectedDateEvents.slice(0, 5);
+  const displayEvents = selectedDateEvents.slice(0, 6);
   const hiddenCount = selectedDateEvents.length - displayEvents.length;
 
   return (
@@ -462,6 +483,7 @@ function CalendarWidgetTablet({
         backgroundColor: COLORS.background,
         borderRadius: 22,
         padding: 16,
+        flexDirection: 'column',
       }}
     >
       {/* Header Row */}
@@ -474,7 +496,10 @@ function CalendarWidgetTablet({
           marginBottom: 12,
         }}
       >
-        <FlexWidget style={{ flexDirection: 'column' }}>
+        <FlexWidget
+          clickAction="OPEN_APP"
+          style={{ flexDirection: 'column' }}
+        >
           <TextWidget
             text="FastNotes Agenda 🖥️"
             style={{
@@ -510,195 +535,139 @@ function CalendarWidgetTablet({
         </FlexWidget>
       </FlexWidget>
 
-      {/* Body: Columns Side-by-Side */}
-      <FlexWidget style={{ flexDirection: 'row', flex: 1 }}>
-        
-        {/* Left Column: Calendar & Week Slider */}
-        <FlexWidget style={{ flexDirection: 'column', flex: 1.8, marginRight: 14 }}>
-          
-          {/* Week Selector Bar */}
-          <FlexWidget
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              width: 'match_parent',
-              marginBottom: 8,
-              backgroundColor: COLORS.card,
-              borderRadius: 8,
-              padding: 6,
-            }}
-          >
-            <FlexWidget
-              clickAction="PREV_WEEK"
-              clickActionData={{ weekStart, offset: -14 }}
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 6,
-                backgroundColor: COLORS.background,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <TextWidget text="◀" style={{ fontSize: 9, color: COLORS.primary }} />
-            </FlexWidget>
-            
-            <TextWidget
-              text={getMonthYearLabel(weekStart)}
-              style={{
-                fontSize: 11,
-                fontWeight: 'bold',
-                color: COLORS.text,
-              }}
-            />
-
-            <FlexWidget
-              clickAction="NEXT_WEEK"
-              clickActionData={{ weekStart, offset: 14 }}
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 6,
-                backgroundColor: COLORS.background,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <TextWidget text="▶" style={{ fontSize: 9, color: COLORS.primary }} />
-            </FlexWidget>
-          </FlexWidget>
-
-          {/* Semana 1 (Días 1 a 7) */}
-          <FlexWidget
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              width: 'match_parent',
-              marginBottom: 8,
-            }}
-          >
-            {weekDays.slice(0, 7).map(dayDate => (
-              <DayCell
-                key={dayDate}
-                dayDate={dayDate}
-                isSelected={dayDate === selectedDate}
-                dayEvents={events.filter(e => e.date === dayDate)}
-              />
-            ))}
-          </FlexWidget>
-
-          {/* Semana 2 (Días 8 a 14) */}
-          <FlexWidget
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              width: 'match_parent',
-            }}
-          >
-            {weekDays.slice(7, 14).map(dayDate => (
-              <DayCell
-                key={dayDate}
-                dayDate={dayDate}
-                isSelected={dayDate === selectedDate}
-                dayEvents={events.filter(e => e.date === dayDate)}
-              />
-            ))}
-          </FlexWidget>
+      {/* Day Navigation Bar */}
+      <FlexWidget
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          width: 'match_parent',
+          marginBottom: 12,
+          backgroundColor: COLORS.card,
+          borderRadius: 12,
+          padding: 8,
+        }}
+      >
+        <FlexWidget
+          clickAction="PREV_DAY"
+          clickActionData={{ date: selectedDate }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: COLORS.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <TextWidget text="◀" style={{ fontSize: 12, color: COLORS.primary, fontWeight: 'bold' }} />
         </FlexWidget>
 
-        {/* Vertical Divider */}
         <FlexWidget
-          style={{
-            width: 1,
-            height: 'match_parent',
-            backgroundColor: COLORS.border || '#FFD3DF',
-          }}
-        />
-
-        {/* Right Column: Events List */}
-        <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
+          clickAction="OPEN_APP"
+        >
           <TextWidget
-            text={`Agenda del ${getDayNumber(selectedDate)} de ${getMonthYearLabel(selectedDate).split(' ')[0]}:`}
+            text={formatWidgetDate(selectedDate)}
             style={{
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: 'bold',
               color: COLORS.text,
-              marginBottom: 6,
             }}
           />
-
-          {isLoading ? (
-            <FlexWidget style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <TextWidget text="Cargando..." style={{ fontSize: 11, color: COLORS.textSecondary }} />
-            </FlexWidget>
-          ) : !isLoggedIn ? (
-            <FlexWidget style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <TextWidget text="Por favor inicia sesión 🔑" style={{ fontSize: 11, color: COLORS.textSecondary }} />
-            </FlexWidget>
-          ) : selectedDateEvents.length === 0 ? (
-            <FlexWidget style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <TextWidget text="¡Nada programado! 🎉" style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: 'bold' }} />
-            </FlexWidget>
-          ) : (
-            <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
-              {displayEvents.map((event) => {
-                let typeColor: ColorProp = COLORS.primary;
-                let typeText = 'Tarea';
-                if (event.type === 'pending') { typeColor = COLORS.secondary; typeText = 'Pendiente'; }
-                if (event.type === 'evaluation') { typeColor = COLORS.success; typeText = 'Eval'; }
-                if (event.type === 'exam') { typeColor = COLORS.warning; typeText = 'Examen'; }
-
-                return (
-                  <FlexWidget
-                    key={event.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 6,
-                      backgroundColor: COLORS.card,
-                      borderRadius: 8,
-                      marginBottom: 5,
-                    }}
-                  >
-                    <FlexWidget
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: typeColor,
-                        marginRight: 6,
-                      }}
-                    />
-                    <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
-                      <TextWidget
-                        text={event.description}
-                        style={{ fontSize: 10, color: COLORS.text, fontWeight: 'bold' }}
-                      />
-                      <TextWidget
-                        text={typeText}
-                        style={{ fontSize: 7, color: typeColor, fontWeight: 'bold' }}
-                      />
-                    </FlexWidget>
-                  </FlexWidget>
-                );
-              })}
-
-              {hiddenCount > 0 && (
-                <TextWidget
-                  text={`Y +${hiddenCount} actividades más...`}
-                  style={{
-                    fontSize: 8,
-                    color: COLORS.textSecondary,
-                    fontStyle: 'italic',
-                    textAlign: 'right',
-                  }}
-                />
-              )}
-            </FlexWidget>
-          )}
         </FlexWidget>
 
+        <FlexWidget
+          clickAction="NEXT_DAY"
+          clickActionData={{ date: selectedDate }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: COLORS.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <TextWidget text="▶" style={{ fontSize: 12, color: COLORS.primary, fontWeight: 'bold' }} />
+        </FlexWidget>
+      </FlexWidget>
+
+      {/* Events List */}
+      <FlexWidget
+        clickAction="OPEN_APP"
+        style={{ flexDirection: 'column', flex: 1, width: 'match_parent' }}
+      >
+        {isLoading ? (
+          <FlexWidget style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <TextWidget text="Cargando..." style={{ fontSize: 12, color: COLORS.textSecondary }} />
+          </FlexWidget>
+        ) : !isLoggedIn ? (
+          <FlexWidget style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <TextWidget text="Por favor inicia sesión 🔑" style={{ fontSize: 12, color: COLORS.textSecondary }} />
+          </FlexWidget>
+        ) : selectedDateEvents.length === 0 ? (
+          <FlexWidget style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <TextWidget text="¡Nada programado para hoy! 🎉" style={{ fontSize: 12, color: COLORS.textSecondary, fontWeight: 'bold' }} />
+          </FlexWidget>
+        ) : (
+          <FlexWidget style={{ flexDirection: 'column', flex: 1, width: 'match_parent' }}>
+            {displayEvents.map((event) => {
+              let typeColor: ColorProp = COLORS.primary;
+              let typeText = 'Tarea';
+              if (event.type === 'pending') { typeColor = COLORS.secondary; typeText = 'Pendiente'; }
+              if (event.type === 'evaluation') { typeColor = COLORS.success; typeText = 'Eval'; }
+              if (event.type === 'exam') { typeColor = COLORS.warning; typeText = 'Examen'; }
+
+              return (
+                <FlexWidget
+                  key={event.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 8,
+                    backgroundColor: COLORS.card,
+                    borderRadius: 10,
+                    marginBottom: 6,
+                    width: 'match_parent',
+                  }}
+                >
+                  <FlexWidget
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: typeColor,
+                      marginRight: 10,
+                    }}
+                  />
+                  <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
+                    <TextWidget
+                      text={event.description}
+                      style={{ fontSize: 11, color: COLORS.text, fontWeight: 'bold' }}
+                    />
+                    <TextWidget
+                      text={typeText}
+                      style={{ fontSize: 8, color: typeColor, fontWeight: 'bold' }}
+                    />
+                  </FlexWidget>
+                </FlexWidget>
+              );
+            })}
+
+            {hiddenCount > 0 && (
+              <TextWidget
+                text={`Y +${hiddenCount} actividades más...`}
+                style={{
+                  fontSize: 9,
+                  color: COLORS.textSecondary,
+                  fontStyle: 'italic',
+                  textAlign: 'right',
+                  marginTop: 4,
+                }}
+              />
+            )}
+          </FlexWidget>
+        )}
       </FlexWidget>
     </FlexWidget>
   );
@@ -711,11 +680,26 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   const { widgetAction, widgetInfo } = props;
   const isTabletWidget = widgetInfo.widgetName === 'CalendarWidgetTablet';
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const todayStr = getLocalDateString();
 
   // 1. Recover/Initialize State from SecureStore
+  let lastWidgetUpdateDate = (await SecureStore.getItemAsync('widget_last_update_date')) || '';
   let selectedDate: string = (await SecureStore.getItemAsync('widget_selected_date')) || todayStr;
   let weekStart: string = (await SecureStore.getItemAsync('widget_week_start')) || getMondayOfCurrentWeek();
+
+  // If the widget is being added/updated, or if the day changed since the last update, reset selectedDate to today
+  if (widgetAction === 'WIDGET_ADDED' || widgetAction === 'WIDGET_UPDATE' || lastWidgetUpdateDate !== todayStr) {
+    selectedDate = todayStr;
+    await SecureStore.setItemAsync('widget_selected_date', selectedDate);
+    await SecureStore.setItemAsync('widget_last_update_date', todayStr);
+  }
 
   // Ensure they are stored
   await SecureStore.setItemAsync('widget_selected_date', selectedDate);
@@ -728,6 +712,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
 
     if (action === 'SELECT_DATE' && actionData?.date) {
       selectedDate = actionData.date;
+      await SecureStore.setItemAsync('widget_selected_date', selectedDate);
+    } else if (action === 'PREV_DAY' && actionData?.date) {
+      selectedDate = getOffsetDate(actionData.date, -1);
+      await SecureStore.setItemAsync('widget_selected_date', selectedDate);
+    } else if (action === 'NEXT_DAY' && actionData?.date) {
+      selectedDate = getOffsetDate(actionData.date, 1);
       await SecureStore.setItemAsync('widget_selected_date', selectedDate);
     } else if (action === 'PREV_WEEK' && actionData?.weekStart) {
       const offset = typeof actionData.offset === 'number' ? actionData.offset : -7;
@@ -769,7 +759,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
     }
   }
 
-  // 4. Fetch the week's events asynchronously
+  // 4. Fetch the events asynchronously
   let isLoggedIn = false;
   let events: WidgetEvent[] = [];
 
@@ -779,8 +769,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       isLoggedIn = true;
       const user = session.user;
       
-      const firstDay = weekStart;
-      const lastDay = getOffsetDate(weekStart, 13);
+      const firstDay = isTabletWidget ? getOffsetDate(selectedDate, -30) : weekStart;
+      const lastDay = isTabletWidget ? getOffsetDate(selectedDate, 30) : getOffsetDate(weekStart, 13);
 
       // Fetch tasks, evaluations, and exams in range
       const [tasksRes, pendingsRes, evalsRes, examsRes] = await Promise.all([
@@ -881,7 +871,14 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
 // ----------------------------------------------------
 export async function requestAllWidgetsUpdate() {
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const getLocalDateString = () => {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const todayStr = getLocalDateString();
     let selectedDate: string = (await SecureStore.getItemAsync('widget_selected_date')) || todayStr;
     let weekStart: string = (await SecureStore.getItemAsync('widget_week_start')) || getMondayOfCurrentWeek();
 
@@ -893,8 +890,10 @@ export async function requestAllWidgetsUpdate() {
       if (session?.user) {
         isLoggedIn = true;
         const user = session.user;
-        const firstDay = weekStart;
-        const lastDay = getOffsetDate(weekStart, 13);
+        
+        // Fetch a broad 60-day window around today to cover both widgets' navigation ranges
+        const firstDay = getOffsetDate(todayStr, -30);
+        const lastDay = getOffsetDate(todayStr, 30);
 
         const [tasksRes, pendingsRes, evalsRes, examsRes] = await Promise.all([
           backgroundSupabase.from('tasks').select('id, description, due_date, completed').eq('user_id', user.id).gte('due_date', firstDay).lte('due_date', lastDay),

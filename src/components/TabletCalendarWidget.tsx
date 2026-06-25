@@ -1,22 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  TextInput,
   ActivityIndicator,
   FlatList,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
-import { Calendar } from 'react-native-calendars';
 import Svg, { Path } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  interpolate,
-} from 'react-native-reanimated';
 import { useWidgetData, CalendarEvent } from '@/hooks/useWidgetData';
 
 interface TabletCalendarWidgetProps {
@@ -26,68 +19,48 @@ interface TabletCalendarWidgetProps {
 
 export default function TabletCalendarWidget({ onPendingAdded, onTaskToggled }: TabletCalendarWidgetProps) {
   const { colors } = useTheme();
+  const router = useRouter();
   const {
     loading,
-    savingPending,
-    saveQuickPending,
     toggleTaskCompletion,
     getEventsForDate,
-    getPendingLocalDate,
-    tasks,
-    pendings,
-    evaluations,
-    exams,
   } = useWidgetData({ onPendingAdded, onTaskToggled });
 
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // State
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [pendingText, setPendingText] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
 
-  // Reanimated values for inline quick add
-  const quickAddProgress = useSharedValue(0);
+  const changeDay = (offset: number) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + offset);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
+  };
 
-  useEffect(() => {
-    quickAddProgress.value = withSpring(showQuickAdd ? 1 : 0, {
-      damping: 15,
-      stiffness: 150,
-    });
-  }, [showQuickAdd, quickAddProgress]);
-
-  const quickAddAnimStyle = useAnimatedStyle(() => {
-    const height = interpolate(quickAddProgress.value, [0, 1], [0, 80]);
-    const opacity = interpolate(quickAddProgress.value, [0, 0.5, 1], [0, 0, 1]);
-    const marginTop = interpolate(quickAddProgress.value, [0, 1], [0, 12]);
-    return {
-      height,
-      opacity,
-      marginTop,
-      overflow: 'hidden',
-    };
-  });
-
-  const handleAddPending = async () => {
-    if (!pendingText.trim()) return;
-    const success = await saveQuickPending(pendingText);
-    if (success) {
-      setPendingText('');
-      setShowQuickAdd(false);
+  const formatNavDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr + 'T00:00:00');
+      const weekday = d.toLocaleDateString('es-ES', { weekday: 'long' });
+      const day = d.getDate();
+      const month = d.toLocaleDateString('es-ES', { month: 'long' });
+      const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+      const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+      return `${capitalizedWeekday}, ${day} ${capitalizedMonth}`;
+    } catch (e) {
+      return dateStr;
     }
   };
 
   const selectedDateEvents = getEventsForDate(selectedDate);
-
-  const getMarkedDates = () => {
-    const marked: any = {};
-    marked[selectedDate] = {
-      selected: true,
-      selectedColor: colors.primary,
-      selectedTextColor: '#FFFFFF',
-    };
-    return marked;
-  };
 
   const renderEventItem = ({ item }: { item: CalendarEvent }) => {
     const isTask = item.type === 'task';
@@ -179,7 +152,7 @@ export default function TabletCalendarWidget({ onPendingAdded, onTaskToggled }: 
           </View>
           <View>
             <Text style={[styles.widgetTitle, { color: colors.text }]}>
-              Agenda de Estudios y Calendario
+              Agenda de Estudios y Tareas
             </Text>
             <Text style={[styles.widgetSubtitle, { color: colors.textSecondary }]}>
               Vista Ampliada para Tablets
@@ -192,239 +165,82 @@ export default function TabletCalendarWidget({ onPendingAdded, onTaskToggled }: 
           style={[
             styles.quickAddBtn,
             {
-              backgroundColor: showQuickAdd ? colors.backgroundElement : colors.primary,
+              backgroundColor: colors.primary,
             },
           ]}
-          onPress={() => setShowQuickAdd(!showQuickAdd)}
+          onPress={() => router.push('/quick-add-modal')}
           activeOpacity={0.8}
         >
-          {showQuickAdd ? (
-            <Text style={[styles.quickAddBtnText, { color: colors.primary }]}>Cerrar</Text>
-          ) : (
-            <Text style={[styles.quickAddBtnText, { color: '#FFF' }]}>⚡ Pendiente Rápido</Text>
-          )}
+          <Text style={[styles.quickAddBtnText, { color: '#FFF' }]}>⚡ Apunte Rápido</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Inline Quick Add Input Box */}
-      <Animated.View style={quickAddAnimStyle}>
-        <View
-          style={[
-            styles.quickInputWrapper,
-            {
-              backgroundColor: colors.backgroundElement + '30',
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <TextInput
-            style={[styles.quickInput, { color: colors.text }]}
-            placeholder="Escribe un pendiente que quieras recordar y presiona enter..."
-            placeholderTextColor={colors.textSecondary + '80'}
-            value={pendingText}
-            onChangeText={setPendingText}
-            onSubmitEditing={handleAddPending}
-          />
-          <TouchableOpacity
-            style={[
-              styles.quickSaveBtn,
-              {
-                backgroundColor: colors.primary,
-                opacity: pendingText.trim() ? 1 : 0.6,
-              },
-            ]}
-            onPress={handleAddPending}
-            disabled={savingPending || !pendingText.trim()}
-          >
-            {savingPending ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Text style={styles.saveBtnText}>Guardar</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ margin: 60 }} />
       ) : (
         <View style={styles.widgetBody}>
-          {/* Side-by-side Columns */}
-          <View style={styles.columnsContainer}>
-            {/* Left Column: Calendar */}
-            <View style={styles.leftColumn}>
-              <Calendar
-                current={selectedDate}
-                onDayPress={(day) => setSelectedDate(day.dateString)}
-                markedDates={getMarkedDates()}
-                dayComponent={({ date, state }) => {
-                  if (!date) return null;
-                  const dStr = date.dateString;
+          {/* Day Navigation Bar */}
+          <View style={[styles.navigationBar, { backgroundColor: colors.backgroundElement + '20', borderColor: colors.border + '50' }]}>
+            <TouchableOpacity
+              style={[styles.navArrowBtn, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}
+              onPress={() => changeDay(-1)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.arrowText, { color: colors.primary }]}>◀</Text>
+            </TouchableOpacity>
 
-                  const dayTasks = tasks.filter((t) => t.due_date === dStr);
-                  const dayPendings = pendings.filter(
-                    (p) => getPendingLocalDate(p.created_at) === dStr
-                  );
-                  const dayEvals = evaluations.filter((e) => e.date === dStr);
-                  const dayExams = exams.filter((ex) => ex.date === dStr);
+            <Text style={[styles.navigationDateText, { color: colors.text }]}>
+              {formatNavDate(selectedDate)}
+            </Text>
 
-                  const isSelected = selectedDate === dStr;
-                  const isToday = state === 'today';
-                  const isDisabled = state === 'disabled';
+            <TouchableOpacity
+              style={[styles.navArrowBtn, { backgroundColor: colors.backgroundCard, borderColor: colors.border }]}
+              onPress={() => changeDay(1)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.arrowText, { color: colors.primary }]}>▶</Text>
+            </TouchableOpacity>
+          </View>
 
-                  const hasTask = dayTasks.length > 0;
-                  const hasPending = dayPendings.length > 0;
-                  const hasEval = dayEvals.length > 0;
-                  const hasExam = dayExams.length > 0;
-
-                  return (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[
-                        styles.compactDay,
-                        {
-                          borderColor: isSelected
-                            ? colors.primary
-                            : isToday
-                            ? colors.primaryLight
-                            : 'transparent',
-                          backgroundColor: isSelected
-                            ? colors.primary + '18'
-                            : isToday
-                            ? colors.primary + '05'
-                            : 'transparent',
-                        },
-                      ]}
-                      onPress={() => setSelectedDate(dStr)}
-                    >
-                      <Text
-                        style={[
-                          styles.compactDayText,
-                          {
-                            color: isDisabled
-                              ? colors.textSecondary + '40'
-                              : isToday
-                              ? colors.primary
-                              : colors.text,
-                            fontWeight: isSelected || isToday ? '700' : '500',
-                          },
-                        ]}
-                      >
-                        {date.day}
-                      </Text>
-
-                      {/* Dots Row */}
-                      <View style={styles.dotsRow}>
-                        {hasExam && (
-                          <View style={[styles.miniDot, { backgroundColor: colors.warning }]} />
-                        )}
-                        {hasEval && (
-                          <View style={[styles.miniDot, { backgroundColor: colors.success }]} />
-                        )}
-                        {hasTask && (
-                          <View style={[styles.miniDot, { backgroundColor: colors.primary }]} />
-                        )}
-                        {hasPending && (
-                          <View style={[styles.miniDot, { backgroundColor: colors.secondary }]} />
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
-                theme={{
-                  calendarBackground: colors.backgroundCard,
-                  textSectionTitleColor: colors.textSecondary,
-                  selectedDayBackgroundColor: colors.primary,
-                  selectedDayTextColor: '#ffffff',
-                  todayTextColor: colors.primary,
-                  dayTextColor: colors.text,
-                  textDisabledColor: colors.textSecondary + '20',
-                  arrowColor: colors.primary,
-                  monthTextColor: colors.text,
-                  indicatorColor: colors.primary,
-                  // @ts-ignore
-                  'stylesheet.calendar.header': {
-                    header: {
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingHorizontal: 12,
-                      marginTop: 0,
-                    },
-                    week: {
-                      marginTop: 8,
-                      flexDirection: 'row',
-                      justifyContent: 'space-around',
-                      borderBottomWidth: 1.5,
-                      borderBottomColor: colors.border + '30',
-                      paddingBottom: 6,
-                    },
-                  },
-                  'stylesheet.day.basic': {
-                    base: {
-                      width: 48,
-                      height: 48,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    },
-                  },
-                }}
-              />
-            </View>
-
-            {/* Divider */}
-            <View style={[styles.columnDivider, { backgroundColor: colors.border + '50' }]} />
-
-            {/* Right Column: Events */}
-            <View style={styles.rightColumn}>
-              <View
-                style={[
-                  styles.listHeader,
-                  { borderBottomColor: colors.border + '40' },
-                ]}
-              >
-                <View>
-                  <Text style={[styles.listHeaderTitle, { color: colors.text }]}>
-                    Agenda para el:{' '}
-                    {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </Text>
-                  <Text style={[styles.listHeaderSubtitle, { color: colors.textSecondary }]}>
-                    Detalles de actividades programadas
-                  </Text>
-                </View>
-                <View style={[styles.badge, { backgroundColor: colors.backgroundElement }]}>
-                  <Text style={[styles.badgeText, { color: colors.primary }]}>
-                    {selectedDateEvents.length}{' '}
-                    {selectedDateEvents.length === 1 ? 'evento' : 'eventos'}
-                  </Text>
-                </View>
+          {/* Events List */}
+          <View style={styles.listContainer}>
+            <View
+              style={[
+                styles.listHeader,
+                { borderBottomColor: colors.border + '40' },
+              ]}
+            >
+              <Text style={[styles.listHeaderSubtitle, { color: colors.textSecondary }]}>
+                Actividades programadas para este día
+              </Text>
+              <View style={[styles.badge, { backgroundColor: colors.backgroundElement }]}>
+                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                  {selectedDateEvents.length}{' '}
+                  {selectedDateEvents.length === 1 ? 'evento' : 'eventos'}
+                </Text>
               </View>
-
-              {selectedDateEvents.length > 0 ? (
-                <FlatList
-                  data={selectedDateEvents}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderEventItem}
-                  contentContainerStyle={styles.listContent}
-                  style={styles.eventsScrollList}
-                  showsVerticalScrollIndicator={false}
-                />
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text style={{ fontSize: 24, marginBottom: 8 }}>🌸</Text>
-                  <Text style={[styles.emptyText, { color: colors.text }]}>
-                    No hay actividades programadas
-                  </Text>
-                  <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                    ¡Disfruta de un día libre de entregas y evaluaciones!
-                  </Text>
-                </View>
-              )}
             </View>
+
+            {selectedDateEvents.length > 0 ? (
+              <FlatList
+                data={selectedDateEvents}
+                keyExtractor={(item) => item.id}
+                renderItem={renderEventItem}
+                contentContainerStyle={styles.listContent}
+                style={styles.eventsScrollList}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={{ fontSize: 24, marginBottom: 8 }}>🌸</Text>
+                <Text style={[styles.emptyText, { color: colors.text }]}>
+                  No hay actividades programadas
+                </Text>
+                <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                  ¡Disfruta de un día libre de entregas y evaluaciones!
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       )}
@@ -485,78 +301,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  quickInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    paddingHorizontal: 16,
-    height: 52,
-    gap: 12,
-  },
-  quickInput: {
-    flex: 1,
-    fontSize: 14,
-    height: '100%',
-    padding: 0,
-  },
-  quickSaveBtn: {
-    paddingHorizontal: 16,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   widgetBody: {
     marginTop: 20,
   },
-  columnsContainer: {
+  navigationBar: {
     flexDirection: 'row',
-    gap: 24,
-    minHeight: 380,
-  },
-  leftColumn: {
-    flex: 1.1,
-    justifyContent: 'center',
-  },
-  columnDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    marginVertical: 10,
-  },
-  rightColumn: {
-    flex: 1,
-    paddingLeft: 8,
-  },
-  compactDay: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 4,
-    gap: 4,
+    padding: 8,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    marginBottom: 20,
   },
-  compactDayText: {
+  navArrowBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arrowText: {
     fontSize: 14,
-    textAlign: 'center',
+    fontWeight: 'bold',
   },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 3,
-    justifyContent: 'center',
-    height: 5,
+  navigationDateText: {
+    fontSize: 16,
+    fontWeight: '800',
+    textTransform: 'capitalize',
   },
-  miniDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+  listContainer: {
+    flex: 1,
   },
   listHeader: {
     borderBottomWidth: 1.5,
@@ -566,15 +341,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  listHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'capitalize',
-  },
   listHeaderSubtitle: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
   },
   badge: {
     paddingHorizontal: 10,
@@ -586,7 +355,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   eventsScrollList: {
-    maxHeight: 320,
+    maxHeight: 380,
   },
   listContent: {
     gap: 10,

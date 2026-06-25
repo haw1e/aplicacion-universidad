@@ -57,6 +57,45 @@ export default function TasksScreen() {
   const { colors } = useTheme();
   const { showConfirm, showAlert } = useAlert();
 
+  const formatModalDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay();
+      const dayOfMonth = dateObj.getDate();
+      const monthIndex = dateObj.getMonth();
+
+      const weekDays = [
+        'Domingo',
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado'
+      ];
+      
+      const months = [
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre'
+      ];
+
+      return `${weekDays[dayOfWeek]}, ${dayOfMonth} ${months[monthIndex]}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   // View state
   const [viewMode, setViewMode] = useState<'tasks' | 'pendings'>('tasks');
   const [loading, setLoading] = useState(true);
@@ -381,8 +420,7 @@ export default function TasksScreen() {
 
   // Friendly date formatting
   const formatFriendlyDate = (dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    return formatModalDate(dateStr);
   };
 
   const renderTaskItem = ({ item }: { item: DayGroup }) => {
@@ -656,11 +694,12 @@ export default function TasksScreen() {
               <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>+ Añadir descripción</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.subLabel, { color: colors.text }]}>Seleccionar Fecha:</Text>
+            <Text style={[styles.subLabel, { color: colors.text }]}>Seleccionar Fecha: {formatModalDate(taskDate)}</Text>
             <View style={styles.calendarContainer}>
               <Calendar
                 current={taskDate}
                 onDayPress={day => setTaskDate(day.dateString)}
+                monthFormat={'MMMM'}
                 markedDates={{
                   [taskDate]: { selected: true, selectedColor: colors.primary },
                 }}
@@ -809,11 +848,12 @@ export default function TasksScreen() {
               onChangeText={setTaskDesc}
             />
 
-            <Text style={[styles.subLabel, { color: colors.text }]}>Seleccionar Fecha Límite:</Text>
+            <Text style={[styles.subLabel, { color: colors.text }]}>Seleccionar Fecha Límite: {formatModalDate(taskDate)}</Text>
             <View style={styles.calendarContainer}>
               <Calendar
                 current={taskDate}
                 onDayPress={day => setTaskDate(day.dateString)}
+                monthFormat={'MMMM'}
                 markedDates={{
                   [taskDate]: { selected: true, selectedColor: colors.primary },
                 }}
@@ -867,11 +907,12 @@ export default function TasksScreen() {
               onChangeText={setTaskDesc}
             />
 
-            <Text style={[styles.subLabel, { color: colors.text }]}>Fecha:</Text>
+            <Text style={[styles.subLabel, { color: colors.text }]}>Fecha: {formatModalDate(taskDate)}</Text>
             <View style={styles.calendarContainer}>
               <Calendar
                 current={taskDate}
                 onDayPress={day => setTaskDate(day.dateString)}
+                monthFormat={'MMMM'}
                 markedDates={{
                   [taskDate]: { selected: true, selectedColor: colors.primary },
                 }}
