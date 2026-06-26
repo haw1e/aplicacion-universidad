@@ -1,5 +1,5 @@
 {
-  "version": "1.0.4",
-  "apkUrl": "https://github.com/haw1e/aplicacion-universidad/releases/download/v1.0.4/FastNotes.apk",
-  "changelog": "Mejorados los widgets, cada boton tiene su propia función (agregar apunte rapido, cambiar día, abrir app), mejorada las diferentes vistas)"
+  "version": "1.0.5",
+  "apkUrl": "https://github.com/haw1e/aplicacion-universidad/releases/download/v1.0.5/FastNotes.apk",
+  "changelog": "Paso a transformar la app a local)"
 }

@@ -1,13 +1,27 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Platform } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/auth';
 import { useAlert } from '@/context/AlertContext';
+import { exportSupabaseBackupToFile } from '@/lib/backup';
 
 export default function SettingsScreen() {
   const { themeMode, setThemeMode, colors } = useTheme();
-  const { signOut } = useAuth();
-  const { showConfirm } = useAlert();
+  const { user, signOut } = useAuth();
+  const { showAlert, showConfirm } = useAlert();
+
+  const handleExportMigrationBackup = async () => {
+    if (!user) {
+      showAlert({ title: 'Error ❌', message: 'Debes iniciar sesión para exportar tus datos.' });
+      return;
+    }
+    try {
+      await exportSupabaseBackupToFile(user.id);
+      showAlert({ title: '¡Éxito! 💾', message: 'Tus datos de Supabase se han exportado correctamente en un formato listo para la versión local.' });
+    } catch (error: any) {
+      showAlert({ title: 'Error ❌', message: error.message });
+    }
+  };
 
   const renderOption = (
     label: string,
@@ -69,6 +83,36 @@ export default function SettingsScreen() {
           {renderOption('Automático (Sistema) ⚙️', 'Se ajusta según la configuración de tu dispositivo.', 'system', '💻')}
         </View>
 
+
+        {/* Migración Local */}
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 32 }]}>Migración Local 💾</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+          Exporta tus datos para migrar a la nueva versión 100% sin conexión (Local).
+        </Text>
+
+        <TouchableOpacity
+          style={[
+            styles.optionCard,
+            {
+              backgroundColor: colors.backgroundCard,
+              borderColor: colors.border,
+              borderWidth: 1.5,
+              marginBottom: 16,
+            },
+          ]}
+          onPress={handleExportMigrationBackup}
+          activeOpacity={0.7}
+        >
+          <View style={styles.optionHeader}>
+            <Text style={styles.optionIcon}>📤</Text>
+            <View style={styles.optionInfo}>
+              <Text style={[styles.optionTitle, { color: colors.text }]}>Exportar Datos para Migración</Text>
+              <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
+                Descarga un archivo .json compatible con la versión local e importa todos tus apuntes y tareas allí.
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
 
         {/* Cuenta y Acceso */}
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 32 }]}>Cuenta y Acceso 👤</Text>

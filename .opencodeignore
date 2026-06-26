@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+.pub-cache/
+
+# Compilaciones y carpetas autogeneradas de Flutter/Dart
+.dart_tool/
+build/
+ios/
+android/
+windows/
+macos/
+linux/
+web/
+
+# Archivos del sistema y control de versiones
+.git/
+.DS_Store
+
+# Entornos virtuales (si usas Python/Jupyter)
+venv/
+env/
+.ipynb_checkpoints/
+
+# Variables de entorno (por seguridad)
+.env
